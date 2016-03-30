@@ -1,5 +1,6 @@
 require 'java'
 require 'jruby/core_ext'
+require 'delegate'
 
 java_import 'org.apache.spark.SparkConf'
 java_import 'org.apache.spark.api.java.JavaRDD'
@@ -11,16 +12,55 @@ java_import 'scala.Tuple2'
 java_import 'org.apache.spark.jruby.ExecutorBootstrap'
 java_import 'com.sensetime.utils.ProcToBytesService'
 java_import 'org.apache.spark.jruby.function.JFunction'
+java_import 'org.apache.spark.jruby.function.JFunction2'
+java_import 'org.apache.spark.jruby.function.JVoidFunction'
 java_import 'org.apache.spark.jruby.function.JFlatMapFunction'
 
 ProcToBytesService.new.basicLoad JRuby.runtime
 
-class Proc
+module JRubySpark
+  class RDD < Delegator
+    def initialize jrdd
+      super
+    end
 
-  def self._load args
-    Proc._from_bytes args[0], args[1]
+    def map_partitions f
+      callJava :map_partitions, JMapPartitionsFunction, f
+    end
+
+    def map f
+      callJava :map, JFunction, f
+    end
+
+    def reduce f
+      callJava :reduce, JFunction2, f
+    end
+
+
+    def foreach f
+      callJava :foreach, JVoidFunction, f
+    end
+
+    def __getobj__
+      @jrdd
+    end
+
+    def __setobj__(obj)
+      @jrdd = obj
+    end
+
+    private
+    def callJava method, fclazz, f
+      raise 'not a lambda' unless Proc === f && f.lambda?
+      payload = Marshal.dump(f).to_java_bytes
+      RDD.new(@jrdd.__send__(method, fclazz.new(payload)))
+    end
   end
 
+  module Functional
+    ADD = lambda {|x, y| x + y}
+    # SUB = lambda {|x, y| x - y}
+  end
 end
 
 module WordCount
@@ -43,6 +83,10 @@ module WordCount
 
   CONST1 = 'XXX'
 
+  def self.mapper x
+    x.split.size
+  end
+
   def self.main
     b = 'aa'
     # a = lambda {|x| x.split.first + 'bb' + CONST1 }
@@ -60,8 +104,7 @@ module WordCount
 
     pb = -> (x) {
       x.each { |e| p e }
-      # nil
-      ''
+      nil
       # x.split.first + b
     }
     t = Marshal.dump(pb)
@@ -81,7 +124,7 @@ module WordCount
     File.open('proc.bin', 'wb') {|io| io.write t}
     newp = Marshal.load(t)
     p newp
-    p newp.call('dd  bb')
+    p newp.call(['dd  bb'])
 
 
 
@@ -92,12 +135,19 @@ module WordCount
     ctx = JavaSparkContext.new conf
     # # ctx.broadcast ExecutorBootstrap.new
 
-    rdd = ctx.textFile ARGV[0]
-    f = JFunction.new t.to_java_bytes
+    rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0], 2))
+    #f = JFunction.new t.to_java_bytes
     # a = lambda {|x| x.split}
     # p a.to_bytes
     # out = rdd.map(f.to_java)
-    out = rdd.map_partitions(JFlatMapFunction.new(t.to_java_bytes))
-    p out.collect()
+    out = rdd.map(->(x) { WordCount.mapper x })
+              .foreach(->(x) { puts x })
+
+    rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
+    wc = rdd.map(->(x) { WordCount.mapper x })
+              .reduce(JRubySpark::Functional::ADD)
+    puts "WC: #{wc}"
+
+    # p out.collect()
   end
 end

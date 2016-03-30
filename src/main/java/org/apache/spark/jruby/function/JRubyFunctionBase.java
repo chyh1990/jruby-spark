@@ -64,6 +64,22 @@ public abstract  class JRubyFunctionBase implements Serializable {
         return JavaUtil.convertRubyToJava(rbObj);
     }
 
+    public Object callProc2(Object obj1, Object obj2) {
+        IRubyObject args[] = new IRubyObject[2];
+        Ruby runtime = getRuntime();
+        args[0] = JavaUtil.convertJavaToRuby(runtime, obj1);
+        args[1] = JavaUtil.convertJavaToRuby(runtime, obj2);
+        IRubyObject rbObj = callProc(args, null);
+        return JavaUtil.convertRubyToJava(rbObj);
+    }
+
+    public void callProc1NoResult(Object obj) {
+        IRubyObject args[] = new IRubyObject[1];
+        Ruby runtime = getRuntime();
+        args[0] = JavaUtil.convertJavaToRuby(runtime, obj);
+        callProc(args, null);
+    }
+
     public Ruby getRuntime() {
         return ExecutorBootstrap.getInstance().getRuntime();
     }

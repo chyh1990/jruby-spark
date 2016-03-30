@@ -31,7 +31,7 @@ class ProcIRWriterStream extends IRWriterStream {
 }
 
 class ProcIRWriter {
-    final static boolean PROCIR_PRINT = true;
+    final static boolean PROCIR_PRINT = RubyInstanceConfig.IR_WRITING_DEBUG;
     public static ArrayList<IRubyObject> persist(ThreadContext context,
                                IRWriterEncoder file, Block block) throws IOException {
         // ArrayList<IRScope> scopes;
@@ -40,7 +40,7 @@ class ProcIRWriter {
         IRClosure closure = irblock.getScope();
 
         //IRubyObject self = block.getBinding().getSelf();
-        System.out.println("X " + closure.getLexicalScopes());
+        // System.out.println("X " + closure.getLexicalScopes());
         // IRScope s = closure;
         file.startEncoding(closure);
 
@@ -240,7 +240,7 @@ class ProcIRWriter {
 }
 
 class ProcIRReader extends IRReader {
-    final static boolean PROCIR_PRINT = true;
+    final static boolean PROCIR_PRINT = RubyInstanceConfig.IR_READING_DEBUG;
 
     public static Block loadToScope(Ruby runtime, IRReaderDecoder file, IRubyObject[] vars) throws IOException {
         int version = file.decodeIntRaw();
@@ -277,6 +277,7 @@ class ProcIRReader extends IRReader {
             // String name = file.decodeString();
             IRScope scope = decodeScopeHeader(runtime.getIRManager(), file, outerScopes[i-1], true).getKey();
             if (scope instanceof IRModuleBody) {
+                if (PROCIR_PRINT) System.out.println("resolving " + scope);
                 IRubyObject obj = current.getConstant(scope.getName());
                 if (obj == null) {
                     throw runtime.newNameError("scope name not found", scope.getName());
@@ -517,7 +518,7 @@ public class ProcToBytesService implements BasicLibraryService {
             RubyArray vars = (RubyArray)_vars;
 
             ByteArrayInputStream is = new ByteArrayInputStream(bytes.getUnsafeBytes());
-            System.out.println("IRScope: " + context.getCurrentStaticScope().getIRScope());
+            // System.out.println("IRScope: " + context.getCurrentStaticScope().getIRScope());
 
             // ObjectInputStream input = null;
             try {
@@ -538,6 +539,8 @@ public class ProcToBytesService implements BasicLibraryService {
         @JRubyMethod
         public static IRubyObject marshal_dump(ThreadContext context, IRubyObject self) {
             Ruby ruby = context.getRuntime();
+            if (!RubyInstanceConfig.IR_WRITING)
+                throw ruby.newRuntimeError("ir.writing must be enable");
             RubyProc proc = (RubyProc) self;
             if (!proc.lambda_p(context).isTrue())
                 throw context.getRuntime().newArgumentError("only lambda can be dump");
@@ -546,14 +549,14 @@ public class ProcToBytesService implements BasicLibraryService {
 
             Block block = proc.getBlock();
 
-
+/*
             System.err.println("DYN Scope: " + block.getBinding().getDynamicScope());
             IRBlockBody irblock = (IRBlockBody)block.getBody();
 
             IRClosure closure = irblock.getScope();
             System.err.println("INSTR: " + closure.toStringInstrs());
             System.err.println("SS Scope: " + closure.getStaticScope().toString());
-
+*/
 
             try {
                 try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {

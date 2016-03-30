@@ -15,11 +15,8 @@ public class JFlatMapFunction extends JRubyFunctionBase implements FlatMapFuncti
     @Override
     public Iterable call(Object o) throws Exception {
         System.out.println("FLATMAP " + o);
-        if (o instanceof Iterator) {
-            Iterator it = (Iterator)o;
-            callProc1(it);
-        } else {
-        }
+        callProc1(o);
+
         return null;
     }
 }
