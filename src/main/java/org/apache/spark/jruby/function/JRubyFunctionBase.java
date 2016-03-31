@@ -1,10 +1,7 @@
 package org.apache.spark.jruby.function;
 
 import org.apache.spark.jruby.ExecutorBootstrap;
-import org.jruby.Ruby;
-import org.jruby.RubyProc;
-import org.jruby.RubyProcess;
-import org.jruby.RubyString;
+import org.jruby.*;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
@@ -41,9 +38,14 @@ public abstract  class JRubyFunctionBase implements Serializable {
 
         RubyString data = RubyString.newString(runtime, bytecode);
         IRubyObject obj = runtime.getMarshal().callMethod(getCurrentContext(), "load", data);
-        if (!(obj instanceof RubyProc))
-            throw new RuntimeException("bytecode is not a proc");
-        this.proc = (RubyProc)obj;
+        if (obj instanceof RubyProc) {
+            this.proc = (RubyProc) obj;
+        } else if (obj instanceof RubySymbol) {
+            RubySymbol sym = (RubySymbol)obj;
+            this.proc = (RubyProc)sym.to_proc(getCurrentContext());
+        } else {
+            throw new RuntimeException("bytecode is not a proc or a symbol");
+        }
         System.err.println("Ruby proc: " + proc + ", " + proc.getBlock().getSignature());
     }
 
@@ -61,7 +63,7 @@ public abstract  class JRubyFunctionBase implements Serializable {
         IRubyObject args[] = new IRubyObject[1];
         Ruby runtime = getRuntime();
         args[0] = JavaUtil.convertJavaToRuby(runtime, obj);
-        IRubyObject rbObj = callProc(args, null);
+        IRubyObject rbObj = callProc(args, Block.NULL_BLOCK);
         return JavaUtil.convertRubyToJava(rbObj);
     }
 
@@ -70,7 +72,7 @@ public abstract  class JRubyFunctionBase implements Serializable {
         Ruby runtime = getRuntime();
         args[0] = JavaUtil.convertJavaToRuby(runtime, obj1);
         args[1] = JavaUtil.convertJavaToRuby(runtime, obj2);
-        IRubyObject rbObj = callProc(args, null);
+        IRubyObject rbObj = callProc(args, Block.NULL_BLOCK);
         return JavaUtil.convertRubyToJava(rbObj);
     }
 
@@ -78,7 +80,7 @@ public abstract  class JRubyFunctionBase implements Serializable {
         IRubyObject args[] = new IRubyObject[1];
         Ruby runtime = getRuntime();
         args[0] = JavaUtil.convertJavaToRuby(runtime, obj);
-        callProc(args, null);
+        callProc(args, Block.NULL_BLOCK);
     }
 
     public Ruby getRuntime() {

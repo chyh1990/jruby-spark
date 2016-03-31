@@ -30,7 +30,6 @@ module JRubySpark
 
     def map f = nil, &block
       f ||= Proc.new block
-      p f
       callJava :map, JFunction, f
     end
 
@@ -53,7 +52,7 @@ module JRubySpark
 
     private
     def callJava method, fclazz, f
-      raise 'not a lambda' unless Proc === f # && f.lambda?
+      raise 'not a lambda' unless Proc === f || Symbol === f
       payload = Marshal.dump(f).to_java_bytes
       RDD.new(@jrdd.__send__(method, fclazz.new(payload)))
     end
@@ -157,8 +156,8 @@ module WordCount
 
     rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
     puts "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc"
-    wc = rdd.map{|x| x.split.size }
-              .reduce(->(x,y){x+y})
+    wc = rdd.map{|x| x.split.size }.reduce(:+)
+              #.reduce(->(x,y){x+y})
     puts "WC: #{wc}"
 
     # p out.collect()
