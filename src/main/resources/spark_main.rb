@@ -28,7 +28,9 @@ module JRubySpark
       callJava :map_partitions, JMapPartitionsFunction, f
     end
 
-    def map f
+    def map f = nil, &block
+      f ||= Proc.new block
+      p f
       callJava :map, JFunction, f
     end
 
@@ -51,7 +53,7 @@ module JRubySpark
 
     private
     def callJava method, fclazz, f
-      raise 'not a lambda' unless Proc === f && f.lambda?
+      raise 'not a lambda' unless Proc === f # && f.lambda?
       payload = Marshal.dump(f).to_java_bytes
       RDD.new(@jrdd.__send__(method, fclazz.new(payload)))
     end
@@ -97,6 +99,16 @@ module WordCount
       # return 'early'
       x.split.first + 'bb' + b
     }
+
+    p = Proc.new {|x|
+      #x.each {|y| puts y}
+      puts x
+    }
+    t = Marshal.dump(p)
+    p t
+    p1 = Marshal.load(t)
+    p p1
+    p1.call([1,2])
     # p Marshal.dump(a)
     # a.call('aa bb')
     # t = Marshal.dump(a)
@@ -140,12 +152,13 @@ module WordCount
     # a = lambda {|x| x.split}
     # p a.to_bytes
     # out = rdd.map(f.to_java)
-    out = rdd.map(->(x) { WordCount.mapper x })
-              .foreach(->(x) { puts x })
+    #out = rdd.map(->(x) { WordCount.mapper x })
+    #          .foreach(->(x) { puts x })
 
     rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
-    wc = rdd.map(->(x) { WordCount.mapper x })
-              .reduce(JRubySpark::Functional::ADD)
+    puts "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc"
+    wc = rdd.map{|x| x.split.size }
+              .reduce(->(x,y){x+y})
     puts "WC: #{wc}"
 
     # p out.collect()

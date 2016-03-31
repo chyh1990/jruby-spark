@@ -36,6 +36,7 @@ class ProcIRWriter {
                                IRWriterEncoder file, Block block) throws IOException {
         // ArrayList<IRScope> scopes;
         IRBlockBody irblock = (IRBlockBody)block.getBody();
+        if(PROCIR_PRINT) System.out.println("PROC SIG " + irblock.getSignature());
 
         IRClosure closure = irblock.getScope();
 
@@ -68,7 +69,7 @@ class ProcIRWriter {
 
         // dynamic scopes
         DynamicScope dyn = block.getBinding().getDynamicScope();
-        ArrayList<Integer> dynScopes = new ArrayList<>();
+        ArrayList<KeyValuePair<Integer, DynamicScope>> dynScopes = new ArrayList<>();
         while (dyn != null) {
             if(PROCIR_PRINT) System.out.println("DYNSCOPE: " + dyn.toString());
             // find scope
@@ -83,13 +84,15 @@ class ProcIRWriter {
             if (staticId < 0)
                 throw context.getRuntime().newRuntimeError("Fail to find static scope of dynamicScope");
             // stored in revered order
-            dynScopes.add(scopes.size() - staticId - 1);
+            dynScopes.add(new KeyValuePair(scopes.size() - staticId - 1, dyn));
             dyn = dyn.getParentScope();
         }
         // write in reversed order (parent -> child)
         file.encode(dynScopes.size());
-        for (int i = dynScopes.size() - 1; i >= 0; i--)
-            file.encode(dynScopes.get(i).intValue());
+        for (int i = dynScopes.size() - 1; i >= 0; i--) {
+            file.encode(dynScopes.get(i).getKey().intValue());
+            file.encode(dynScopes.get(i).getValue().isLambda());
+        }
 
         if (PROCIR_PRINT) System.out.println("BINDING: " + block.getBinding().getFile() + ", "
                 + block.getBinding().getLine() + ", frame " + block.getBinding().getFrame());
@@ -321,9 +324,11 @@ class ProcIRReader extends IRReader {
         DynamicScope currentScope = null;
         for (int i = 0; i < dynScopeToRead; i++) {
             int idx = file.decodeInt();
+            boolean islambda = file.decodeBoolean();
             if (PROCIR_PRINT) System.out.println("dyn scopes " + idx + ": " + outerScopes[idx]);
             // reconstruct dynamic scopes
             currentScope = DynamicScope.newDynamicScope(outerScopes[idx].getStaticScope(), currentScope);
+            currentScope.setLambda(islambda);
         }
 
         // construct dynamic scopes
@@ -398,6 +403,7 @@ class ProcIRReader extends IRReader {
 
         if (type == IRScopeType.CLOSURE || type == IRScopeType.FOR) {
             signature = Signature.decode(decoder.decodeLong());
+            // System.err.println("DECODESIG " + signature);
         } else {
             signature = Signature.OPTIONAL;
         }
@@ -459,11 +465,12 @@ class ProcIRReader extends IRReader {
  */
 public class ProcToBytesService implements BasicLibraryService {
     static Field fBlock;
+    static Field fBlockType;
 
     protected static final ObjectAllocator NEW_PROC_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             Block dummy = new Block(new NullBlockBody(), new Binding(new Frame(), null, "", "", 0));
-            return RubyProc.newProc(runtime, dummy, Block.Type.LAMBDA);
+            return RubyProc.newProc(runtime, dummy, Block.Type.PROC);
         }
     };
 
@@ -476,6 +483,8 @@ public class ProcToBytesService implements BasicLibraryService {
         try {
             fBlock = RubyProc.class.getDeclaredField("block");
             fBlock.setAccessible(true);
+            fBlockType = RubyProc.class.getDeclaredField("type");
+            fBlockType.setAccessible(true);
         } catch (NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
@@ -492,13 +501,15 @@ public class ProcToBytesService implements BasicLibraryService {
                 throw context.getRuntime().newArgumentError("must be array");
 
             IRubyObject [] args = ((RubyArray)_args).toJavaArray();
-            if (args.length != 2)
-                throw context.getRuntime().newArgumentError(args.length, 2);
+            if (args.length != 3)
+                throw context.getRuntime().newArgumentError(args.length, 3);
 
             // FIXME hack
             RubyProc proc = (RubyProc)_from_bytes(context, null, args[0], args[1]);
             try {
                 fBlock.set(self, proc.getBlock());
+                if (args[2].isTrue())
+                    fBlockType.set(self, Block.Type.LAMBDA);
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
             }
@@ -529,11 +540,11 @@ public class ProcToBytesService implements BasicLibraryService {
                 //IRClosure closure = (IRClosure)scope;
                 //closure.getBlockBody();
                 // Block block = new Block(closure.getBlockBody(), context.currentBinding());
-                return RubyProc.newProc(context.getRuntime(), block, Block.Type.LAMBDA);
+                return RubyProc.newProc(context.getRuntime(), block, Block.Type.PROC);
             } catch (Exception e) {
                 e.printStackTrace();
+                throw context.getRuntime().newRuntimeError(e.getMessage());
             }
-            return null;
         }
 
         @JRubyMethod
@@ -542,8 +553,10 @@ public class ProcToBytesService implements BasicLibraryService {
             if (!RubyInstanceConfig.IR_WRITING)
                 throw ruby.newRuntimeError("ir.writing must be enable");
             RubyProc proc = (RubyProc) self;
+            /*
             if (!proc.lambda_p(context).isTrue())
                 throw context.getRuntime().newArgumentError("only lambda can be dump");
+                */
 
            // System.err.println("XX " + proc);
 
@@ -559,17 +572,18 @@ public class ProcToBytesService implements BasicLibraryService {
 */
 
             try {
-                try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                    ArrayList<IRubyObject> vars = ProcIRWriter.persist(context, new ProcIRWriterStream(baos), block);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ArrayList<IRubyObject> vars = ProcIRWriter.persist(context, new ProcIRWriterStream(baos), block);
 
-                    RubyArray ret = ruby.newArray(2);
-                    ret.set(0, ruby.newString(new ByteList(baos.toByteArray())));
-                    ret.set(1, ruby.newArray(vars));
+                RubyArray ret = ruby.newArray(3);
+                ret.set(0, ruby.newString(new ByteList(baos.toByteArray())));
+                ret.set(1, ruby.newArray(vars));
+                ret.set(2, proc.lambda_p(context).isTrue());
 
-                    return ret;
-                }
+                return ret;
             } catch (IOException ex) {
-                throw new RuntimeException(ex);
+                ex.printStackTrace();
+                throw context.getRuntime().newRuntimeError(ex.getMessage());
             }
         }
     }

@@ -3,6 +3,7 @@ package org.apache.spark.jruby.function;
 import org.apache.spark.jruby.ExecutorBootstrap;
 import org.jruby.Ruby;
 import org.jruby.RubyProc;
+import org.jruby.RubyProcess;
 import org.jruby.RubyString;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
@@ -43,7 +44,7 @@ public abstract  class JRubyFunctionBase implements Serializable {
         if (!(obj instanceof RubyProc))
             throw new RuntimeException("bytecode is not a proc");
         this.proc = (RubyProc)obj;
-        System.err.println("Ruby proc: " + proc);
+        System.err.println("Ruby proc: " + proc + ", " + proc.getBlock().getSignature());
     }
 
     private void ensureProc() {
