@@ -1,68 +1,4 @@
-require 'java'
-require 'jruby/core_ext'
-require 'delegate'
-
-java_import 'org.apache.spark.SparkConf'
-java_import 'org.apache.spark.api.java.JavaRDD'
-java_import 'org.apache.spark.api.java.JavaSparkContext'
-java_import 'org.apache.spark.api.java.function.FlatMapFunction'
-java_import 'org.apache.spark.api.java.function.Function2'
-java_import 'org.apache.spark.api.java.function.PairFunction'
-java_import 'scala.Tuple2'
-java_import 'org.apache.spark.jruby.ExecutorBootstrap'
-java_import 'com.sensetime.utils.ProcToBytesService'
-java_import 'org.apache.spark.jruby.function.JFunction'
-java_import 'org.apache.spark.jruby.function.JFunction2'
-java_import 'org.apache.spark.jruby.function.JVoidFunction'
-java_import 'org.apache.spark.jruby.function.JFlatMapFunction'
-
-ProcToBytesService.new.basicLoad JRuby.runtime
-
-module JRubySpark
-  class RDD < Delegator
-    def initialize jrdd
-      super
-    end
-
-    def map_partitions f
-      callJava :map_partitions, JMapPartitionsFunction, f
-    end
-
-    def map f = nil, &block
-      f ||= Proc.new block
-      callJava :map, JFunction, f
-    end
-
-    def reduce f
-      callJava :reduce, JFunction2, f
-    end
-
-
-    def foreach f
-      callJava :foreach, JVoidFunction, f
-    end
-
-    def __getobj__
-      @jrdd
-    end
-
-    def __setobj__(obj)
-      @jrdd = obj
-    end
-
-    private
-    def callJava method, fclazz, f
-      raise 'not a lambda' unless Proc === f || Symbol === f
-      payload = Marshal.dump(f).to_java_bytes
-      RDD.new(@jrdd.__send__(method, fclazz.new(payload)))
-    end
-  end
-
-  module Functional
-    ADD = lambda {|x, y| x + y}
-    # SUB = lambda {|x, y| x - y}
-  end
-end
+require '/data/chenyh/work/spark/test_spark1/src/main/resources/jruby_spark.rb'
 
 module WordCount
   # new FlatMapFunction<String, String>() {
@@ -71,21 +7,45 @@ module WordCount
   #         return Arrays.asList(s.split(" "));
   #     }
   # };
-  class SplitWord
-    include FlatMapFunction
-    # def initialize name
-    #   @name = name
-    # end
 
-    def call s
-      s.split
-    end
-  end
 
   CONST1 = 'XXX'
 
   def self.mapper x
     x.split.size
+  end
+
+  class NotIter
+    def initialize name
+      @name = name
+    end
+
+    def get
+      @name
+    end
+  end
+
+  class MyType
+    attr_reader :name
+    def initialize name
+      @name = name
+    end
+
+    def get
+      @name
+    end
+
+    def to_s
+      "ME:#{@name}"
+    end
+
+    def ==(other)
+      other.name == @name
+    end
+
+    def eql?(other)
+      self == other
+    end
   end
 
   def self.main
@@ -142,11 +102,11 @@ module WordCount
     puts "START"
     conf = SparkConf.new
     conf.setMaster('local').setAppName('test1')
-    # conf.set("spark.closure.serializer", "org.apache.spark.jruby.JRubySerializer")
+    conf.set("spark.closure.serializer", "org.apache.spark.jruby.JRubyDummySerializer")
     ctx = JavaSparkContext.new conf
     # # ctx.broadcast ExecutorBootstrap.new
 
-    rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0], 2))
+    rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
     #f = JFunction.new t.to_java_bytes
     # a = lambda {|x| x.split}
     # p a.to_bytes
@@ -155,11 +115,23 @@ module WordCount
     #          .foreach(->(x) { puts x })
 
     rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
-    puts "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc"
-    wc = rdd.map{|x| x.split.size }.reduce(:+)
-              #.reduce(->(x,y){x+y})
-    puts "WC: #{wc}"
+    puts "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+    #wc = rdd.map{|x| x.split.size }.map(->(x) {x}).reduce(:+)
+    #          #.reduce(->(x,y){x+y})
+    #puts "WC: #{wc}"
 
+    # p rdd.map{|x| [x.split.size, 0]}.foreach{|x| p x}
     # p out.collect()
+    delim = /[^\w']+/
+    rdd.flat_map{|x| x.split delim }
+        .map_to_pair{|x| [x, 1]}
+        .reduce_by_key(:+)
+        .foreach{|x| puts x}
+
+    rdd.flat_map{|x| x.split delim }.map{|x| MyType.new x }
+        .map_to_pair{|x| [x, 1]}
+        .reduce_by_key(:+)
+        .foreach{|x| puts x }
+    # sleep
   end
 end

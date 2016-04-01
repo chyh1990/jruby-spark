@@ -575,10 +575,11 @@ public class ProcToBytesService implements BasicLibraryService {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 ArrayList<IRubyObject> vars = ProcIRWriter.persist(context, new ProcIRWriterStream(baos), block);
 
-                RubyArray ret = ruby.newArray(3);
-                ret.set(0, ruby.newString(new ByteList(baos.toByteArray())));
-                ret.set(1, ruby.newArray(vars));
-                ret.set(2, proc.lambda_p(context).isTrue());
+                RubyArray ret = ruby.newArray(
+                        ruby.newString(new ByteList(baos.toByteArray())),
+                        ruby.newArray(vars),
+                        proc.lambda_p(context)
+                );
 
                 return ret;
             } catch (IOException ex) {

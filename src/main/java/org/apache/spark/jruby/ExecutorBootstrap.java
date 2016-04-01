@@ -26,7 +26,8 @@ public class ExecutorBootstrap {
         runtime = Ruby.newInstance(new RubyInstanceConfig());
         // FIXME conflict with scala loader?
         Thread.currentThread().setContextClassLoader(runtime.getJRubyClassLoader());
-        runtime.runFromMain(config.getScriptSource(), "<spark_main>");
+        // FIXME realpath problem
+        runtime.runFromMain(config.getScriptSource(), "");
     }
 
     public static synchronized ExecutorBootstrap getInstance() {

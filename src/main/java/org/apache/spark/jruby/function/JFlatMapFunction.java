@@ -1,8 +1,12 @@
 package org.apache.spark.jruby.function;
 
 import org.apache.spark.api.java.function.FlatMapFunction;
+import org.jruby.runtime.Block;
+import org.jruby.runtime.builtin.IRubyObject;
 
 import java.util.Iterator;
+
+import static org.apache.spark.jruby.TypeUtils.rubyToIterable;
 
 /**
  * Created by chenyh on 3/30/16.
@@ -14,9 +18,8 @@ public class JFlatMapFunction extends JRubyFunctionBase implements FlatMapFuncti
 
     @Override
     public Iterable call(Object o) throws Exception {
-        System.out.println("FLATMAP " + o);
-        callProc1(o);
-
-        return null;
+        // FIXME
+        Iterable it = rubyToIterable(getRuntime(), callProc1NoConvert(o));
+        return it;
     }
 }
