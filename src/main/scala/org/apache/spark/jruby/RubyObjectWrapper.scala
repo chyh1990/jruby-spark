@@ -43,8 +43,9 @@ class RubyObjectWrapper(private var _obj: IRubyObject)
   }
 
   def get() = _obj
+  def inspect() : String = "#<Wrap: " + _obj.inspect().toString + ">"
 
-  override def toString() : String = "#<Wrap: " + _obj.asJavaString() + ">"
+  override def toString() : String = _obj.asString().asJavaString()
   override def equals(o: Any) : Boolean = o match {
     case that: RubyObjectWrapper => _obj.eql(that._obj)
     case that: IRubyObject => _obj.eql(that)

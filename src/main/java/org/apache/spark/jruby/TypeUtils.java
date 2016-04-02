@@ -1,32 +1,38 @@
 package org.apache.spark.jruby;
 
 import org.jruby.*;
-import org.jruby.ext.bigdecimal.RubyBigDecimal;
-import org.jruby.java.proxies.JavaProxy;
 import org.jruby.javasupport.JavaObject;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.builtin.IRubyObject;
 import scala.Tuple2;
-import org.apache.spark.jruby.RubyObjectWrapper;
+
+import java.util.Iterator;
 
 /**
  * Created by chenyh on 3/31/16.
  */
 public class TypeUtils {
 
-    public static Iterable rubyToIterable(Ruby runtime, IRubyObject rbObj) {
-        if (rbObj instanceof Iterable) {
-            // FIXME convert output to java
+    public static Iterable rubyToIterable(Ruby runtime, Object rbObj) {
+        if (rbObj == null)
+            throw runtime.newArgumentError("Iterator must not be null");
+        if (rbObj instanceof JRubyIteratableAdaptor)
             return (Iterable)rbObj;
-        } else if (rbObj instanceof RubyObject) {
-            RubyObject obj = (RubyObject)rbObj;
+        if (rbObj instanceof RubyObject) {
+            RubyObject obj = (RubyObject) rbObj;
             if (obj instanceof RubyEnumerator) {
-                return new JRubyIteratableAdaptor(runtime, (RubyEnumerator)rbObj);
+                return new JRubyIteratableAdaptor(runtime, (RubyEnumerator) rbObj);
+                // FIXME opt for array
+            } else if (obj.respondsTo("each")) {
+                RubyEnumerator enumerator = (RubyEnumerator) RubyEnumerator.enumeratorize(runtime, obj, "each");
+                return new JRubyIteratableAdaptor(runtime, enumerator);
             } else {
-                throw runtime.newArgumentError("not a Enumerator: " + rbObj.getClass().getName());
+                throw runtime.newArgumentError("not a Enumerator or fail to convert to enumerator: " + rbObj.getClass().getName());
             }
+        } else if (rbObj instanceof Iterable) {
+            return (Iterable)rbObj;
         } else {
-            throw new RuntimeException("Unsupported type to iterator");
+            throw new RuntimeException("Unsupported type to Iterable");
         }
     }
 

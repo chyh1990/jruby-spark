@@ -102,7 +102,7 @@ module WordCount
     puts "START"
     conf = SparkConf.new
     conf.setMaster('local').setAppName('test1')
-    conf.set("spark.closure.serializer", "org.apache.spark.jruby.JRubyDummySerializer")
+    #conf.set("spark.closure.serializer", "org.apache.spark.jruby.JRubyDummySerializer")
     ctx = JavaSparkContext.new conf
     # # ctx.broadcast ExecutorBootstrap.new
 
@@ -129,10 +129,17 @@ module WordCount
         .reduce_by_key(:+)
         .foreach{|x| puts x}
 
-    #rdd.flat_map{|x| x.split delim }.map{|x| MyType.new x }
+    rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
+    #rdd.map_partitions_with_index{|x, y|
+    #  puts x
+    #  y.each {|z| puts z}
+    #  y
+    #}.foreach{|x| puts x }
+
+    #p rdd.flat_map{|x| x.split delim }.map{|x| MyType.new x }
     #    .map_to_pair{|x| [x, 1]}
-    #    .reduce_by_key(:+)
-    #    .foreach{|x| puts x }
+    #    .reduce_by_key(:+).saveAsTextFile("outdir")
+        #.foreach{|x| puts x }
     # sleep
   end
 end

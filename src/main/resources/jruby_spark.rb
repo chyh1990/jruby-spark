@@ -4,12 +4,13 @@ require 'delegate'
 
 java_import 'org.apache.spark.SparkConf'
 java_import 'org.apache.spark.api.java.JavaRDD'
+java_import 'org.apache.spark.api.java.JavaDoubleRDD'
 java_import 'org.apache.spark.api.java.JavaSparkContext'
 java_import 'scala.Tuple2'
 java_import 'org.apache.spark.jruby.ExecutorBootstrap'
 java_import 'com.sensetime.utils.ProcToBytesService'
 
-%w(JFunction JFunction2 JVoidFunction JFlatMapFunction JPairFunction).each do |e|
+%w(JFunction JFunction2 JVoidFunction JFlatMapFunction JPairFunction JDoubleFunction).each do |e|
   java_import 'org.apache.spark.jruby.function.' + e
 end
 
@@ -62,7 +63,16 @@ module JRubySpark
   class PairRDD < RDDLike
   end
 
+  class DoubleRDD < RDDLike
+  end
+
   class RDDLike
+    java_import org.apache.spark.jruby.TypeUtils
+
+    def self.to_java_iter it
+      TypeUtils::rubyToIterable JRuby.runtime, it
+    end
+
     def initialize jrdd
       super
     end
@@ -75,16 +85,45 @@ module JRubySpark
     def self.def_transform name, fclazz, ret_clazz = RDD
       define_method(name) do |f = nil, &block|
         f ||= block if block
-        ret_clazz.new(callJava(name, fclazz, f))
+        if ret_clazz
+          ret_clazz.new(callJava(name, fclazz, f))
+        else
+          callJava(name, fclazz, f)
+        end
       end
     end
 
-    def_transform :map, JFunction
+    def aggregate zero, seqOp, combOp
+      @jrdd.__send__(:aggregate, zero, create_func!(JFunction2, seqOp), create_func!(JFunction2, combOp))
+    end
+
+    def cartesian pair_rdd
+      raise 'not a pair rdd' unless PairRDD === pair_rdd
+      PairRdd.new(@jrdd.__send__(:cartesian, pair_rdd.__getobj__))
+    end
+
+
     def_transform :flat_map, JFlatMapFunction
+    def_transform :flat_map_to_double, JFlatMapFunction, DoubleRDD
     # def_transform :map_partitions, JMapPartitionsFunction
     def_transform :reduce, JFunction2
     def_transform :foreach, JVoidFunction
+    def_transform :map, JFunction
+    def_transform :map_to_double, JDoubleFunction, DoubleRDD
     def_transform :map_to_pair, JPairFunction, PairRDD
+
+    def map_partitions_with_index f = nil, preservesPartitioning = false, &block
+      f ||= block if block
+      to_iter_f2 = lambda {|v1, v2| RDDLike.to_java_iter f.call(v1, v2) }
+      RDD.new @jrdd.mapPartitionsWithIndex(create_func!(JFunction2, to_iter_f2), preservesPartitioning)
+    end
+
+    def map_partitions f = nil, preservesPartitioning = false, &block
+      f ||= block if block
+      to_iter_f2 = lambda {|v1, v2| RDDLike.to_java_iter f.call(v1, v2) }
+      RDD.new @jrdd.mapPartitions(create_func!(JFlatMapFunction, f), preservesPartitioning)
+    end
+
 
     def __getobj__
       @jrdd
@@ -95,12 +134,16 @@ module JRubySpark
     end
 
     protected
-    def callJava method, fclazz, f
-      raise 'not a lambda' unless Proc === f || Symbol === f
-      payload = Marshal.dump(f).to_java_bytes
-      @jrdd.__send__(method, fclazz.new(payload))
+    def callJava method, fclazz, f, args = []
+      args = [create_func!(fclazz, f)] + args
+      @jrdd.__send__(method, *args)
     end
 
+    def create_func! fclazz, f
+      raise 'not a lambda' unless Proc === f || Symbol === f
+      payload = Marshal.dump(f).to_java_bytes
+      fclazz.new(payload)
+    end
   end
 
   class RDD
@@ -112,6 +155,16 @@ module JRubySpark
     #   }
     #   RDD.new(callJava(:filter, JFunction, wrap))
     # end
+    def to_double_rdd
+      DoubleRDD.from_rdd self
+    end
+  end
+
+  class DoubleRDD
+    def self.from_rdd rdd
+      raise 'not an rdd' unless RDD === rdd
+      @jrdd = JavaDoubleRDD.fromRDD rdd.__getobj__.rdd
+    end
   end
 
   class PairRDD
