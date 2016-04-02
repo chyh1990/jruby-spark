@@ -1,15 +1,15 @@
 package org.apache.spark.jruby
 
 import java.io._
-
 import org.jruby.runtime.builtin.IRubyObject
 import org.apache.spark.util.{KnownSizeEstimation, Utils}
-import org.jruby.RubyMarshal
-import org.jruby.runtime.Block
+
 import org.jruby.runtime.marshal.{MarshalStream, UnmarshalStream}
+
 /**
   * Created by chenyh on 4/1/16.
   */
+
 class RubyObjectWrapper(private var _obj: IRubyObject)
   extends KnownSizeEstimation with Externalizable {
 
@@ -17,7 +17,9 @@ class RubyObjectWrapper(private var _obj: IRubyObject)
 
   override def estimatedSize: Long = {
     //println("HERE")
-    10
+    if (_obj == null)
+      return 0
+    JRubySizeEstimator.estimate(_obj)
   }
 
   override def readExternal(objectInput: ObjectInput): Unit = {

@@ -1,6 +1,7 @@
 package org.apache.spark.jruby;
 
 import org.jruby.*;
+import org.jruby.ext.bigdecimal.RubyBigDecimal;
 import org.jruby.java.proxies.JavaProxy;
 import org.jruby.javasupport.JavaObject;
 import org.jruby.javasupport.JavaUtil;
@@ -60,23 +61,35 @@ public class TypeUtils {
         // array!
         if (rubyObject == null || rubyObject.isNil())
             return null;
+
+        if (rubyObject instanceof RubyBoolean)
+            return rubyObject.isTrue();
+        else if (rubyObject instanceof RubyFixnum)
+            return ((RubyFixnum) rubyObject).getLongValue();
+        else if (rubyObject instanceof RubyFloat)
+            return ((RubyFloat) rubyObject).getValue();
+        else if (rubyObject instanceof RubyBignum)
+            return ((RubyBignum) rubyObject).getBigIntegerValue();
+
         IRubyObject origObject = rubyObject;
         if (rubyObject.dataGetStruct() instanceof JavaObject) {
             rubyObject = (IRubyObject) rubyObject.dataGetStruct();
             if ( rubyObject == null ) {
                 throw new RuntimeException("dataGetStruct returned null for " + origObject.getType().getName());
             }
-        } else if (rubyObject.respondsTo("java_object")) {
+        } /* else if (rubyObject.respondsTo("java_object")) {
             rubyObject = rubyObject.callMethod(runtime.getCurrentContext(), "java_object");
             if( rubyObject == null ) {
                 throw new RuntimeException("java_object returned null for " + origObject.getType().getName());
             }
-        }
+        } */
 
         if (rubyObject instanceof JavaObject) {
             return ((JavaObject) rubyObject).getValue();
         }
+
         // FIXME: should we try our best to convert types to java types?
+        // String & Array?
         return new RubyObjectWrapper(rubyObject);
     }
 }

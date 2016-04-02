@@ -72,7 +72,7 @@ module JRubySpark
     #   f ||= Proc.new(block) if block_given?
     #   callJava :map, JFunction, f
     # end
-    def self.def_transform name, fclazz, ret_clazz = self
+    def self.def_transform name, fclazz, ret_clazz = RDD
       define_method(name) do |f = nil, &block|
         f ||= block if block
         ret_clazz.new(callJava(name, fclazz, f))
@@ -101,6 +101,17 @@ module JRubySpark
       @jrdd.__send__(method, fclazz.new(payload))
     end
 
+  end
+
+  class RDD
+    def_transform :filter, JFunction
+    # def filter &block
+    #   f = Proc.new block
+    #   wrap = lambda {|x|
+    #     f.call(x) ? true.to_java : false.to_java
+    #   }
+    #   RDD.new(callJava(:filter, JFunction, wrap))
+    # end
   end
 
   class PairRDD

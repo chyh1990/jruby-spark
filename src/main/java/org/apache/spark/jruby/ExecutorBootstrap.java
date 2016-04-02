@@ -30,9 +30,13 @@ public class ExecutorBootstrap {
         runtime.runFromMain(config.getScriptSource(), "");
     }
 
-    public static synchronized ExecutorBootstrap getInstance() {
-        if (instance == null){
-            instance = new ExecutorBootstrap();
+    public static ExecutorBootstrap getInstance() {
+        if (instance == null) {
+            synchronized (ExecutorBootstrap.class) {
+                if (instance == null) {
+                    instance = new ExecutorBootstrap();
+                }
+            }
         }
         return instance;
     }

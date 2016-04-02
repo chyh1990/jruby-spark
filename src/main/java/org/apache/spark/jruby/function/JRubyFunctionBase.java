@@ -1,16 +1,12 @@
 package org.apache.spark.jruby.function;
 
 import org.apache.spark.jruby.ExecutorBootstrap;
-import org.apache.spark.jruby.JRubyIteratableAdaptor;
 import org.jruby.*;
-import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
-import java.io.ObjectStreamException;
 import java.io.Serializable;
-import java.util.Iterator;
 
 import static org.apache.spark.jruby.TypeUtils.javaToRuby;
 import static org.apache.spark.jruby.TypeUtils.rubyToJava;
@@ -20,7 +16,7 @@ import static org.apache.spark.jruby.TypeUtils.rubyToJava;
  */
 public abstract  class JRubyFunctionBase implements Serializable {
 
-    protected byte[] bytecode;
+    protected final byte[] bytecode;
     private transient RubyProc proc;
 
     public JRubyFunctionBase(byte[] bytecode) {
@@ -66,9 +62,8 @@ public abstract  class JRubyFunctionBase implements Serializable {
     }
 
     public IRubyObject callProc1NoConvert(Object obj) {
-        IRubyObject args[] = new IRubyObject[1];
         Ruby runtime = getRuntime();
-        args[0] = javaToRuby(runtime, obj);
+        IRubyObject args[] = {javaToRuby(runtime, obj)};
         IRubyObject rbObj = callProc(args, Block.NULL_BLOCK);
         return rbObj;//JavaUtil.convertRubyToJava(rbObj);
     }
@@ -78,18 +73,15 @@ public abstract  class JRubyFunctionBase implements Serializable {
     }
 
     public Object callProc2(Object obj1, Object obj2) {
-        IRubyObject args[] = new IRubyObject[2];
         Ruby runtime = getRuntime();
-        args[0] = javaToRuby(runtime, obj1);
-        args[1] = javaToRuby(runtime, obj2);
+        IRubyObject args[] = {javaToRuby(runtime, obj1), javaToRuby(runtime, obj2)};
         IRubyObject rbObj = callProc(args, Block.NULL_BLOCK);
         return rubyToJava(getRuntime(), rbObj);//JavaUtil.convertRubyToJava(rbObj);
     }
 
     public void callProc1NoResult(Object obj) {
-        IRubyObject args[] = new IRubyObject[1];
         Ruby runtime = getRuntime();
-        args[0] = javaToRuby(runtime, obj);
+        IRubyObject args[] = {javaToRuby(runtime, obj)};
         callProc(args, Block.NULL_BLOCK);
     }
 

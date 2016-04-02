@@ -39,12 +39,12 @@ module WordCount
       "ME:#{@name}"
     end
 
-    def ==(other)
-      other.name == @name
+    def eql?(other)
+      self.name.eql? other.name
     end
 
-    def eql?(other)
-      self == other
+    def hash
+      self.name.hash
     end
   end
 
@@ -124,14 +124,15 @@ module WordCount
     # p out.collect()
     delim = /[^\w']+/
     rdd.flat_map{|x| x.split delim }
+        .filter{|x| x.start_with? 'a' }
         .map_to_pair{|x| [x, 1]}
         .reduce_by_key(:+)
         .foreach{|x| puts x}
 
-    rdd.flat_map{|x| x.split delim }.map{|x| MyType.new x }
-        .map_to_pair{|x| [x, 1]}
-        .reduce_by_key(:+)
-        .foreach{|x| puts x }
+    #rdd.flat_map{|x| x.split delim }.map{|x| MyType.new x }
+    #    .map_to_pair{|x| [x, 1]}
+    #    .reduce_by_key(:+)
+    #    .foreach{|x| puts x }
     # sleep
   end
 end
