@@ -1,12 +1,12 @@
 package org.apache.spark.jruby;
 
 import org.jruby.*;
+import org.jruby.ir.Tuple;
 import org.jruby.javasupport.JavaObject;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.builtin.IRubyObject;
 import scala.Tuple2;
 
-import java.util.Iterator;
 
 /**
  * Created by chenyh on 3/31/16.
@@ -37,6 +37,7 @@ public class TypeUtils {
     }
 
     // FIXME: improve this
+    /*
     public static Tuple2 rubyToTuple2(Ruby runtime, IRubyObject obj) {
         if (obj instanceof Tuple2) {
             return (Tuple2)obj;
@@ -49,6 +50,7 @@ public class TypeUtils {
             throw new RuntimeException("not a tuple");
         }
     }
+    */
 
     public static IRubyObject javaToRuby(Ruby runtime, Object obj) {
         if (obj instanceof RubyObjectWrapper) {
@@ -63,10 +65,13 @@ public class TypeUtils {
         }
     }
 
-    public static Object rubyToJava(Ruby runtime, IRubyObject rubyObject) {
+    public static Object rubyToJava(Ruby runtime, Object raw) {
         // array!
-        if (rubyObject == null || rubyObject.isNil())
+        if (raw == null)
             return null;
+        if (!(raw instanceof IRubyObject))
+            return raw;
+        IRubyObject rubyObject = (IRubyObject)raw;
 
         if (rubyObject instanceof RubyBoolean)
             return rubyObject.isTrue();
@@ -91,7 +96,13 @@ public class TypeUtils {
         } */
 
         if (rubyObject instanceof JavaObject) {
-            return ((JavaObject) rubyObject).getValue();
+            Object obj = ((JavaObject) rubyObject).getValue();
+            // handle java collections
+            if (obj instanceof Tuple2) {
+                Tuple2 t = (Tuple2)obj;
+                return new Tuple2(rubyToJava(runtime, t._1), rubyToJava(runtime, t._2));
+            }
+            return obj;
         }
 
         // FIXME: should we try our best to convert types to java types?

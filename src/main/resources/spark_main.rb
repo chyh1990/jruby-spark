@@ -125,7 +125,7 @@ module WordCount
     delim = /[^\w']+/
     rdd.flat_map{|x| x.split delim }
         .filter{|x| x.start_with? 'a' }
-        .map_to_pair{|x| [x, 1]}
+        .map_to_pair{|x| tuple(x, 1) }
         .reduce_by_key(:+)
         .foreach{|x| puts x}
 

@@ -6,7 +6,6 @@ java_import 'org.apache.spark.SparkConf'
 java_import 'org.apache.spark.api.java.JavaRDD'
 java_import 'org.apache.spark.api.java.JavaDoubleRDD'
 java_import 'org.apache.spark.api.java.JavaSparkContext'
-java_import 'scala.Tuple2'
 java_import 'org.apache.spark.jruby.ExecutorBootstrap'
 java_import 'com.sensetime.utils.ProcToBytesService'
 
@@ -53,7 +52,29 @@ class Java::Scala::Tuple2
   end
 end
 
+class Java::Scala::Tuple3
+  include JRubySpark::Patch::Tuple
+  def size
+    3
+  end
+end
+
+module Kernel
+  def tuple *args
+    case args.length
+      when 2
+        Java::Scala::Tuple2.new(*args)
+      when 3
+        Java::Scala::Tuple3.new(*args)
+      else
+        raise ArgumentError('invalid tuple size')
+    end
+  end
+end
+
 module JRubySpark
+  Tuple2 = Java::Scala::Tuple2
+
   class RDDLike < Delegator
   end
 
@@ -120,7 +141,6 @@ module JRubySpark
 
     def map_partitions f = nil, preservesPartitioning = false, &block
       f ||= block if block
-      to_iter_f2 = lambda {|v1, v2| RDDLike.to_java_iter f.call(v1, v2) }
       RDD.new @jrdd.mapPartitions(create_func!(JFlatMapFunction, f), preservesPartitioning)
     end
 
