@@ -100,7 +100,9 @@ class ProcIRWriter {
         if (PROCIR_PRINT) System.out.println("BINDING: " + block.getBinding().getFile() + ", "
                 + block.getBinding().getLine() + ", frame " + block.getBinding().getFrame());
         // encode closure variables with indexes, just write the index mapping
-        Map<LocalVariable, IRubyObject> closureOperands = analysisInstrs(context, block.getBinding(), closure);
+        Map<LocalVariable, IRubyObject> closureOperands = new HashMap();
+        analysisInstrsAll(context, block.getBinding().getDynamicScope(), closure, 0, closureOperands);
+
         file.encode(closureOperands.size());
         ArrayList<IRubyObject> closureVars = new ArrayList();
 
@@ -120,33 +122,59 @@ class ProcIRWriter {
         return closureVars;
     }
 
-    private static Map<LocalVariable, IRubyObject> analysisInstrs(ThreadContext context, Binding binding, IRScope scope) {
-        if (PROCIR_PRINT) System.out.println("Analysis instrs, self = " + binding.getSelf().toString()
-            + ", dyn " + binding.getDynamicScope());
-        Map<LocalVariable, IRubyObject> operands = new HashMap<>();
+    private static DynamicScope analysisInstrs(ThreadContext context,
+                                       DynamicScope dynScope,
+                                       IRScope scope,
+                                       int depth,
+                                       Map<LocalVariable, IRubyObject> vars) {
+        if (PROCIR_PRINT) System.out.println("Analysis instrs, dyn " + dynScope);
+        // Map<LocalVariable, IRubyObject> operands = new HashMap<>();
 
         // FIXME not always new DS, see commonYieldPath /org/jruby/runtime/MixedModeIRBlockBody.java
         InterpreterContext ic = scope.getInterpreterContext();
         if (!ic.pushNewDynScope() && !ic.reuseParentDynScope())
             throw context.getRuntime().newRuntimeError("unhandle dyn scope");
-        DynamicScope dummyScope = DynamicScope.newDummyScope(scope.getStaticScope(), binding.getDynamicScope());
+        DynamicScope dummyScope = DynamicScope.newDynamicScope(scope.getStaticScope(), dynScope);
 
         for (Instr instr: scope.getInterpreterContext().getInstructions()) {
             for (Operand op : instr.getOperands()) {
                 if (op instanceof LocalVariable) {
-                    if (op instanceof ClosureLocalVariable) continue;
+                    // if (op instanceof ClosureLocalVariable) continue;
                     LocalVariable var = (LocalVariable)op;
 
-                    if (PROCIR_PRINT) System.out.println("doing: " + var.toString());
-                    if (operands.get(op) == null) {
-                        IRubyObject obj = (IRubyObject)var.retrieve(context, binding.getSelf(), scope.getStaticScope(), dummyScope, null);
-                        operands.put(var, obj);
-                        if (PROCIR_PRINT) System.out.println(var.getName() + " : " + obj.getClass().getName() + ", " + obj.toString());
+                    if (PROCIR_PRINT) System.out.println("doing on depth " + depth + ": " + var.toString());
+                    // althrough one closure variable reference can show up in multiple closure, they
+                    // share the same IRubyObject, this will be preserved after marshal dump/load
+
+                    // depth related to outmost closure
+                    int realDepth = var.getScopeDepth() - depth;
+                    if (realDepth <= 0) continue;
+
+                    LocalVariable realVar = var.cloneForDepth(realDepth);
+                    if (vars.get(realVar) == null) {
+                        IRubyObject obj = (IRubyObject)var.retrieve(context, null, scope.getStaticScope(), dummyScope, null);
+                        vars.put(realVar, obj);
+                        if (PROCIR_PRINT) System.out.println("record closure var: " + realVar + " : " + obj.getClass().getName()
+                                + ", " + obj.toString());
                     }
                 }
             }
         }
-        return operands;
+        return dummyScope;
+    }
+    private static void analysisInstrsAll(ThreadContext context,
+                                          DynamicScope dynScope,
+                                          IRScope scope,
+                                          int depth,
+                                          Map<LocalVariable, IRubyObject> vars) {
+        DynamicScope childDynScope = dynScope;
+        if (scope.getScopeType().isClosureType())
+            childDynScope = analysisInstrs(context, dynScope, scope, depth, vars);
+        // FIXME: deal with other scopes
+        // process child scopes
+        for (IRScope child: scope.getLexicalScopes()) {
+            analysisInstrsAll(context, childDynScope, child, depth + 1, vars);
+        }
     }
 
     private static void persistScopeHeaders(IRWriterEncoder file, IRScope parent, int depth) {
@@ -353,7 +381,7 @@ class ProcIRReader extends IRReader {
                 selfIdx = i;
             } else {
                 if (depth <= 0) {
-                    throw new IllegalArgumentException("offset too small");
+                    throw new IllegalArgumentException("depth too small");
                 } else {
                     // FIXME lambda in an extra depth
                     currentScope.setValue(offset, vars[i], depth - 1);
@@ -418,7 +446,7 @@ class ProcIRReader extends IRReader {
         // FIXME: It seems wrong we have static scope + local vars both being persisted.  They must have the same values
         // and offsets?
         StaticScope staticScope = decodeStaticScope(decoder, parent == null ? null : parent.getStaticScope());
-        IRScope scope = createScope(manager, type, name, line, parentScope, signature, staticScope);
+        IRScope scope = createScope(manager, type, name, line, parent, signature, staticScope);
 
         scope.setTemporaryVariableCount(tempVarsCount);
         // FIXME: Replace since we are defining this...perhaps even make a persistence constructor

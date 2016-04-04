@@ -18,7 +18,12 @@ module JRubySpark
       @logger = Logger.new $stderr
       @tmpdir = Dir.mktmpdir('jruby-spark-repl-')
       @logger.info "HTTP dir: #{@tmpdir}"
-      @server ||= WEBrick::HTTPServer.new(:Port => 61637, :DocumentRoot => @tmpdir)
+      dev_null = File.open(File::NULL, 'w+')
+      @server ||= WEBrick::HTTPServer.new(:Port => 61637,
+                                          :DocumentRoot => @tmpdir,
+                                          #:Logger => dev_null,
+                                          :AccessLog => dev_null
+      )
     end
 
     def dump io
@@ -116,6 +121,7 @@ if __FILE__ == $0
   conf.set('spark.executor.jruby.repl_http', 'XXX')
 
   $sc = JRubySpark::SparkContext.new conf
+  $sc.setLogLevel("WARN")
 
   repl.start
 end

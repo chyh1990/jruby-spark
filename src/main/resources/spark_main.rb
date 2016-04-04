@@ -160,6 +160,20 @@ module WordCount
         .foreach{|x| puts x }
     # sleep
   end
+
+  def self.main2
+    clv1 = 'xx'
+    a = lambda {|x|
+      p clv1
+      ['a','b'].each do |y|
+        p y + clv1
+      end
+    }
+    t = Marshal.dump(a)
+    p t
+    a1 = Marshal.load(t)
+    a1.call('c')
+  end
 end
 
 if JRubySpark.main?

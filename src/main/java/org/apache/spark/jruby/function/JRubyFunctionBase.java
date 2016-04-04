@@ -52,7 +52,7 @@ public abstract  class JRubyFunctionBase implements Serializable {
         } else {
             throw new RuntimeException("bytecode is not a proc or a symbol");
         }
-        System.err.println("Ruby proc: " + proc + ", " + proc.getBlock().getSignature());
+        // System.err.println("Ruby proc: " + proc + ", " + proc.getBlock().getSignature());
     }
 
     private void ensureProc() {
