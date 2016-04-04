@@ -2,17 +2,7 @@ require 'java'
 require 'jruby/core_ext'
 require 'delegate'
 
-java_import 'org.apache.spark.SparkConf'
-java_import 'org.apache.spark.api.java.JavaRDD'
-java_import 'org.apache.spark.api.java.JavaDoubleRDD'
-java_import 'org.apache.spark.api.java.JavaSparkContext'
-java_import 'org.apache.spark.jruby.ExecutorBootstrap'
 java_import 'com.sensetime.utils.ProcToBytesService'
-
-%w(JFunction JFunction2 JVoidFunction JFlatMapFunction JPairFunction JDoubleFunction).each do |e|
-  java_import 'org.apache.spark.jruby.function.' + e
-end
-
 ProcToBytesService.new.basicLoad JRuby.runtime
 
 module JRubySpark
@@ -59,21 +49,28 @@ class Java::Scala::Tuple3
   end
 end
 
-module Kernel
-  def tuple *args
-    case args.length
-      when 2
-        Java::Scala::Tuple2.new(*args)
-      when 3
-        Java::Scala::Tuple3.new(*args)
-      else
-        raise ArgumentError('invalid tuple size')
+module JRubySpark
+  java_import 'org.apache.spark.SparkConf'
+  java_import 'org.apache.spark.api.java.JavaRDD'
+  java_import 'org.apache.spark.api.java.JavaDoubleRDD'
+  java_import 'org.apache.spark.api.java.JavaSparkContext'
+
+  %w(JFunction JFunction2 JVoidFunction JFlatMapFunction JPairFunction JDoubleFunction).each do |e|
+    java_import 'org.apache.spark.jruby.function.' + e
+  end
+
+  Tuple2 = Java::Scala::Tuple2
+
+  def self.main?
+    $JRUBY_SPARK_PROCESS != 'executor'
+  end
+
+  module Helpers
+    java_import org.apache.spark.jruby.TypeUtils
+    def self.to_iter it
+      TypeUtils::rubyToIterable JRuby.runtime, it
     end
   end
-end
-
-module JRubySpark
-  Tuple2 = Java::Scala::Tuple2
 
   class RDDLike < Delegator
   end
@@ -88,12 +85,6 @@ module JRubySpark
   end
 
   class RDDLike
-    java_import org.apache.spark.jruby.TypeUtils
-
-    def self.to_java_iter it
-      TypeUtils::rubyToIterable JRuby.runtime, it
-    end
-
     def initialize jrdd
       super
     end
@@ -135,7 +126,7 @@ module JRubySpark
 
     def map_partitions_with_index f = nil, preservesPartitioning = false, &block
       f ||= block if block
-      to_iter_f2 = lambda {|v1, v2| RDDLike.to_java_iter f.call(v1, v2) }
+      to_iter_f2 = lambda {|v1, v2| Helpers.to_iter f.call(v1, v2) }
       RDD.new @jrdd.mapPartitionsWithIndex(create_func!(JFunction2, to_iter_f2), preservesPartitioning)
     end
 
@@ -191,8 +182,46 @@ module JRubySpark
     def_transform :reduce_by_key, JFunction2
   end
 
+  class SparkContext < Delegator
+    def initialize conf
+      ctx = JavaSparkContext.new conf
+      @jctx = ctx
+    end
+
+    def __getobj__
+      @jctx
+    end
+
+    def text_file(path, num_part = nil)
+      if num_part
+        RDD.new(@jctx.textFile(path, num_part))
+      else
+        RDD.new(@jctx.textFile(path))
+      end
+    end
+
+  end
+
   module Functional
     ADD = lambda {|x, y| x + y}
     # SUB = lambda {|x, y| x - y}
+  end
+end
+
+
+module Kernel
+  def tuple *args
+    case args.length
+      when 2
+        Java::Scala::Tuple2.new(*args)
+      when 3
+        Java::Scala::Tuple3.new(*args)
+      else
+        raise ArgumentError('invalid tuple size')
+    end
+  end
+
+  def to_iter
+    JRubySpark::Helpers.to_iter self
   end
 end

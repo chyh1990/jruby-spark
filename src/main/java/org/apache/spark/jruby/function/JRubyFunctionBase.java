@@ -36,6 +36,10 @@ public abstract  class JRubyFunctionBase implements Serializable {
         if (proc != null)
             return;
         Ruby runtime = ExecutorBootstrap.getInstance().getRuntime();
+        if (ExecutorBootstrap.getInstance().isREPL()) {
+            // reload
+            runtime.getClass("SparkREPLLoader").callMethod("reload_user_code");
+        }
         // Ruby.setThreadLocalRuntime(runtime);
 
         RubyString data = RubyString.newString(runtime, bytecode);

@@ -55,6 +55,9 @@ class ProcIRWriter {
         IRScope parent = closure.getLexicalParent();
         while (parent != null) {
             if(PROCIR_PRINT) System.out.println("STATICSCOPE: " + parent.hashCode());
+//            if (parent.getScopeType() == IRScopeType.EVAL_SCRIPT) {
+//                throw context.getRuntime().newRuntimeError("Cannot serialize closure in EVAL_SCRIPT");
+//            }
             scopes.add(parent);
             parent = parent.getLexicalParent();
         }
@@ -198,8 +201,11 @@ class ProcIRWriter {
 
         if (scope instanceof IRClosure) {
             IRClosure closure = (IRClosure) scope;
-
-            file.encode(closure.getSignature().encode());
+            if (scope.getScopeType() == IRScopeType.EVAL_SCRIPT) {
+                file.encode(Signature.OPTIONAL);
+            } else {
+                file.encode(closure.getSignature().encode());
+            }
         }
 
         persistStaticScope(file, scope.getStaticScope());
@@ -401,7 +407,7 @@ class ProcIRReader extends IRReader {
         // IRScope parent = null;
         Signature signature;
 
-        if (type == IRScopeType.CLOSURE || type == IRScopeType.FOR) {
+        if (type == IRScopeType.CLOSURE || type == IRScopeType.FOR || type == IRScopeType.EVAL_SCRIPT) {
             signature = Signature.decode(decoder.decodeLong());
             // System.err.println("DECODESIG " + signature);
         } else {

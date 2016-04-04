@@ -100,13 +100,13 @@ module WordCount
 
 
     puts "START"
-    conf = SparkConf.new
+    conf = JRubySpark::SparkConf.new
     conf.setMaster('local').setAppName('test1')
     #conf.set("spark.closure.serializer", "org.apache.spark.jruby.JRubyDummySerializer")
-    ctx = JavaSparkContext.new conf
+    ctx = JRubySpark::SparkContext.new conf
     # # ctx.broadcast ExecutorBootstrap.new
 
-    rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
+    #rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
     #f = JFunction.new t.to_java_bytes
     # a = lambda {|x| x.split}
     # p a.to_bytes
@@ -114,7 +114,7 @@ module WordCount
     #out = rdd.map(->(x) { WordCount.mapper x })
     #          .foreach(->(x) { puts x })
 
-    rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
+    rdd = ctx.text_file(ARGV[0])
     puts "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
     #wc = rdd.map{|x| x.split.size }.map(->(x) {x}).reduce(:+)
     #          #.reduce(->(x,y){x+y})
@@ -129,17 +129,39 @@ module WordCount
         .reduce_by_key(:+)
         .foreach{|x| puts x}
 
-    rdd = JRubySpark::RDD.new(ctx.textFile(ARGV[0]))
+    rdd = ctx.text_file(ARGV[0], 2)
+    puts rdd.map_partitions {|x|
+      Enumerator.new do |y|
+        x.each {|l|
+          y << l if l.start_with? 'Jump'
+        }
+      end
+    }.collect.to_a
+
+    #pi
+    num_samples = 50000
+    count = JRubySpark::RDD.new(ctx.parallelize((1..num_samples).to_a)).map{|_|
+        x = rand
+        y = rand
+        x*x + y*y < 1 ? 1 : 0
+    }.reduce(:+)
+    puts "Pi is roughly #{4.0 * count / num_samples}"
+
+    # puts rdd.collect.to_a
     #rdd.map_partitions_with_index{|x, y|
     #  puts x
     #  y.each {|z| puts z}
     #  y
     #}.foreach{|x| puts x }
 
-    #p rdd.flat_map{|x| x.split delim }.map{|x| MyType.new x }
-    #    .map_to_pair{|x| [x, 1]}
-    #    .reduce_by_key(:+).saveAsTextFile("outdir")
-        #.foreach{|x| puts x }
+    p rdd.flat_map{|x| x.split delim }.map{|x| MyType.new x }
+        .map_to_pair{|x| tuple(x, 1)}
+        .reduce_by_key(:+) #.saveAsTextFile("outdir")
+        .foreach{|x| puts x }
     # sleep
   end
+end
+
+if JRubySpark.main?
+  WordCount.main
 end
