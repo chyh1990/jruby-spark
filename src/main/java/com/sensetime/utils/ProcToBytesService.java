@@ -277,7 +277,7 @@ class ProcIRWriter {
 }
 
 class ProcIRReader extends IRReader {
-    final static boolean PROCIR_PRINT = true; //RubyInstanceConfig.IR_READING_DEBUG;
+    final static boolean PROCIR_PRINT = RubyInstanceConfig.IR_READING_DEBUG;
 
     public static Block loadToScope(Ruby runtime, IRReaderDecoder file, IRubyObject[] vars) throws IOException {
         int version = file.decodeIntRaw();

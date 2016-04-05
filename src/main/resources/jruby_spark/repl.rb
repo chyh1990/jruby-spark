@@ -30,7 +30,7 @@ module JRubySpark
 
     def dump io
       io.puts <<-PROLOG
-require 'jruby_spark'
+require 'jruby_spark/jruby_spark'
 
 module REPLTopLevel
 end
