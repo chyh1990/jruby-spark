@@ -167,10 +167,11 @@ class ProcIRWriter {
                                           IRScope scope,
                                           int depth,
                                           Map<LocalVariable, IRubyObject> vars) {
-        DynamicScope childDynScope = dynScope;
-        if (scope.getScopeType().isClosureType())
-            childDynScope = analysisInstrs(context, dynScope, scope, depth, vars);
-        // FIXME: deal with other scopes
+        // scopes under non-closure scopes do not need to be process
+        if (!scope.getScopeType().isClosureType())
+            return;
+
+        DynamicScope childDynScope = analysisInstrs(context, dynScope, scope, depth, vars);
         // process child scopes
         for (IRScope child: scope.getLexicalScopes()) {
             analysisInstrsAll(context, childDynScope, child, depth + 1, vars);

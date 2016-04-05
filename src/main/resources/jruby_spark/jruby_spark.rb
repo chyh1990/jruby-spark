@@ -58,6 +58,7 @@ module JRubySpark
   %w(JFunction JFunction2 JVoidFunction JFlatMapFunction JPairFunction JDoubleFunction).each do |e|
     java_import 'org.apache.spark.jruby.function.' + e
   end
+  java_import 'org.apache.spark.jruby.RubyObjectWrapper'
 
   Tuple2 = Java::Scala::Tuple2
 
@@ -101,8 +102,32 @@ module JRubySpark
           ret_clazz.new(callJava(name, fclazz, f))
         else
           callJava(name, fclazz, f)
+          nil
         end
       end
+    end
+
+    def self.wrap_return name, ret_clazz = self
+      define_method(name) do |*args|
+        ret_clazz.new(@jrdd.__send__(name, *args))
+      end
+    end
+
+    def self.merge_rdd name, from_clazz = self, to_clazz = self
+      define_method(name) do |rdd, *args|
+        raise "not a #{from_rdd}" unless from_clazz === rdd
+        to_clazz.new(@jrdd.__send__(name, rdd.__getobj__, *args))
+      end
+    end
+
+    def self._clean_object e
+        if RubyObjectWrapper === e
+          t = e.get
+          # XXX java null == nil is false? maybe a bug in jruby
+          t.nil? ? nil : t
+        else
+          e
+        end
     end
 
     def aggregate zero, seqOp, combOp
@@ -114,12 +139,36 @@ module JRubySpark
       PairRdd.new(@jrdd.__send__(:cartesian, pair_rdd.__getobj__))
     end
 
+    def collect
+      @jrdd.collect.map {|e| RDDLike._clean_object e}
+    end
 
     def_transform :flat_map, JFlatMapFunction
     def_transform :flat_map_to_double, JFlatMapFunction, DoubleRDD
-    # def_transform :map_partitions, JMapPartitionsFunction
+    # flat_map_to_pair
+    def fold zero, f = nil, &block
+      f ||= block if block
+      RDD.new @jrdd.fold(zero, create_func!(JFunction2, f))
+    end
+    def_transform :foreach_partition, JVoidFunction, nil
+
+    def group_by f = nil, num_partitions = nil, &block
+      f ||= block if block
+      if num_partitions
+        PairRDD.new @jrdd.groupBy(create_func!(JFunction, f), num_partitions)
+      else
+        PairRDD.new @jrdd.groupBy(create_func!(JFunction, f))
+      end
+    end
+
+    def empty?
+      @jrdd.isEmpty
+    end
+
+    def_transform :key_by, JFunction, PairRDD
+
     def_transform :reduce, JFunction2
-    def_transform :foreach, JVoidFunction
+    def_transform :foreach, JVoidFunction, nil
     def_transform :map, JFunction
     def_transform :map_to_double, JDoubleFunction, DoubleRDD
     def_transform :map_to_pair, JPairFunction, PairRDD
@@ -135,6 +184,26 @@ module JRubySpark
       RDD.new @jrdd.mapPartitions(create_func!(JFlatMapFunction, f), preservesPartitioning)
     end
 
+    def tree_aggregate zero, seqOp, combOp, depth = 2
+      @jrdd.treeAggregate zero, create_func!(JFunction2, seqOp), create_func!(JFunction2, combOp), depth
+    end
+
+    def tree_reduce zero, f = nil, depth = 2, &block
+      f ||= block if block
+      @jrdd.treeReduce zero, create_func!(JFunction2, f), depth
+    end
+
+    def zip(other)
+      PairRDD.new(@jrdd.zip(other.__getobj__))
+    end
+
+    def zip_with_index
+      PairRDD.new @jrdd.zipWithIndex
+    end
+
+    def zip_with_unique_id
+      PairRDD.new @jrdd.zipWithUniqueId
+    end
 
     def __getobj__
       @jrdd
@@ -142,6 +211,10 @@ module JRubySpark
 
     def __setobj__(obj)
       @jrdd = obj
+    end
+
+    def inspect
+      "#<#{self.class}: #{@jrdd.inspect}>"
     end
 
     protected
@@ -158,7 +231,6 @@ module JRubySpark
   end
 
   class RDD
-    def_transform :filter, JFunction
     # def filter &block
     #   f = Proc.new block
     #   wrap = lambda {|x|
@@ -166,6 +238,32 @@ module JRubySpark
     #   }
     #   RDD.new(callJava(:filter, JFunction, wrap))
     # end
+
+    merge_rdd :intersection
+
+    wrap_return :cache
+    wrap_return :coalesce
+    wrap_return :distinct
+    wrap_return :persist
+    def_transform :filter, JFunction
+
+    def random_split weights, seed = rand(100000000)
+      @jrdd.randomSplit(weights, seed).map{|e| RDD.new(e)}
+    end
+
+    wrap_return :repartition
+    wrap_return :sample
+
+    def sort_by f = nil, ascending = true, num_partitions = nil, &block
+      f ||= block if block
+      num_partitions ||= @jrdd.getNumPartitions
+      RDD.new(@jrdd.sortBy(create_func!(JFunction, f), ascending, num_partitions))
+    end
+
+    merge_rdd :substract
+    merge_rdd :union
+    wrap_return :unpersist
+
     def to_double_rdd
       DoubleRDD.from_rdd self
     end
@@ -176,10 +274,74 @@ module JRubySpark
       raise 'not an rdd' unless RDD === rdd
       @jrdd = JavaDoubleRDD.fromRDD rdd.__getobj__.rdd
     end
+
+    wrap_return :cache
+    wrap_return :coalesce
+    wrap_return :distinct
+    def_transform :filter, JFunction
+
+    merge_rdd :intersection
+    wrap_return :persist
+    wrap_return :repartition
+    wrap_return :sample
+
+    merge_rdd :substract
+    merge_rdd :union
+    wrap_return :unpersist
+
   end
 
   class PairRDD
-    def_transform :reduce_by_key, JFunction2
+    # TODO aggregatebykey
+    wrap_return :cache
+    wrap_return :coalesce
+    merge_rdd :cogroup, PairRDD, PairRDD
+
+    def collect_as_map
+      # XXX how to safely sanity key/values
+      h = Hash.new
+      @jrdd.collectAsMap.each {|e| h[RDDLike._clean_object(e[0])] = RDDLike._clean_object(e[1])}
+      h
+    end
+    # TODO cogroup 2/3
+    # TODO combineByKey
+    # TODO flatMapValues
+
+    def fold_by_key zero, num_partitions = nil, f = nil, &block
+      f ||= block if block
+      num_partitions ||= @jrdd.getNumPartitions
+      PairRDD.new(@jrdd.foldByKey(zero, num_partitions, create_func!(JFunction2, f)))
+    end
+
+    merge_rdd :full_outer_join
+    wrap_return :group_by_key
+
+    alias_method :group_with, :cogroup
+    merge_rdd :join
+    # TODO keys
+    wrap_return :left_outer_join
+
+    def_transform :map_values, JFunction, PairRDD
+    wrap_return :persist
+
+    def_transform :reduce_by_key, JFunction2, PairRDD
+    # TODO reduce by key
+    def reduce_by_key_locally
+      @jrdd.reduceByKeyLocally(create_func!(JFunction2, f))
+    end
+
+    wrap_return :repartition
+    wrap_return :repartition_and_sort_within_partitions
+
+    merge_rdd :right_outer_join
+    wrap_return :sample
+    wrap_return :sample_by_key
+    wrap_return :sample_by_key_exact
+    wrap_return :sort_by_key
+    merge_rdd :substract
+    merge_rdd :substract_by_key
+    wrap_return :unpersist
+    wrap_return :values, RDD
   end
 
   class SparkContext < Delegator
@@ -192,14 +354,21 @@ module JRubySpark
       @jctx
     end
 
-    def text_file(path, num_part = nil)
-      if num_part
-        RDD.new(@jctx.textFile(path, num_part))
+    def text_file(path, min_partitions = nil)
+      if min_partitions
+        RDD.new(@jctx.textFile(path, min_partitions))
       else
         RDD.new(@jctx.textFile(path))
       end
     end
 
+    def whole_text_files(path, min_partitions)
+      RDD.new(@jctx.wholeTextFiles(path, min_partitions))
+    end
+
+    def parallelize(e)
+      RDD.new @jctx.parallelize(e)
+    end
   end
 
   module Functional

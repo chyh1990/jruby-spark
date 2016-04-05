@@ -108,6 +108,8 @@ end
       Pry.config.hooks.add_hook(:after_session, :shutdown_jspark) do |res|
         inst.shutdown
       end
+      # XXX pry default inspector has some bug on java objects
+      Pry.config.print = Pry::SIMPLE_PRINT
 
       command_set = Pry::CommandSet.new do
         command 'spark-remove' do |name|
@@ -120,8 +122,9 @@ end
           # p inst.code_cache
         end
       end
+      Pry::Commands.import command_set
 
-      Pry.start REPLTopLevel, commands: command_set
+      Pry.start REPLTopLevel
     end
   end
 end
