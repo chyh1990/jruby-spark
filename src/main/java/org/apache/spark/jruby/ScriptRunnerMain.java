@@ -1,4 +1,4 @@
-package com.sensetime.utils;
+package org.apache.spark.jruby;
 
 import org.jruby.Main;
 

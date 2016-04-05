@@ -1,4 +1,4 @@
-require '/data/chenyh/work/spark/test_spark1/src/main/resources/jruby_spark.rb'
+require 'jruby_spark/jruby_spark'
 
 module WordCount
   # new FlatMapFunction<String, String>() {

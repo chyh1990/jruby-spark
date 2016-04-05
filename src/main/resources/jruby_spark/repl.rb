@@ -1,7 +1,9 @@
 require 'logger'
-require 'jruby_spark'
 require 'webrick'
+require 'fileutils'
 require 'pry'
+
+require 'jruby_spark/jruby_spark'
 
 module REPLTopLevel
   include JRubySpark
@@ -39,6 +41,7 @@ end
       end
       io.puts
 
+      # REPL lambda do not defined in REPLTopLevel
       @code_cache.each do |e|
         io.puts e[:code]
       end
@@ -81,6 +84,11 @@ end
       end
     end
 
+    def shutdown
+      @server.shutdown
+      FileUtils.remove_entry @tmpdir
+    end
+
     def start
       inst = self
       start_http
@@ -92,7 +100,7 @@ end
         inst.add_code res
       end
       Pry.config.hooks.add_hook(:after_session, :shutdown_jspark) do |res|
-        inst.server.shutdown
+        inst.shutdown
       end
 
       command_set = Pry::CommandSet.new do
@@ -117,7 +125,7 @@ if __FILE__ == $0
 
   conf = JRubySpark::SparkConf.new
   conf.setMaster('local').setAppName("spark-repl-#{Time.now.to_i}")
-  conf.set('spark.executor.jruby.bootstrap_file', 'classpath:repl_executor.rb')
+  conf.set('spark.executor.jruby.bootstrap_file', 'classpath:jruby_spark/repl_executor.rb')
   conf.set('spark.executor.jruby.repl_http', 'XXX')
 
   $sc = JRubySpark::SparkContext.new conf
