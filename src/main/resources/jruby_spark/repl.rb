@@ -1,7 +1,13 @@
 require 'logger'
 require 'webrick'
 require 'fileutils'
-require 'pry'
+
+begin
+  require 'pry'
+rescue LoadError
+  $stderr.puts "pry gem is not installed."
+  exit 1
+end
 
 require 'jruby_spark/jruby_spark'
 
@@ -130,6 +136,18 @@ if __FILE__ == $0
 
   $sc = JRubySpark::SparkContext.new conf
   $sc.setLogLevel("WARN")
+
+  logo = <<-'LOGO'
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /__ / .__/\_,_/_/ /_/\_\   version $version
+      /_/
+  LOGO
+  puts logo.gsub('$version', $sc.version.to_s)
+  puts "Using Ruby #{RUBY_VERSION}(#{RUBY_PLATFORM})"
+  puts "SparkContext available as $sc"
 
   repl.start
 end
