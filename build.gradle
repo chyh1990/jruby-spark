@@ -15,7 +15,6 @@ task wrapper(type: Wrapper) {
 repositories {
     maven { url 'http://ci.jruby.org/snapshots/maven/'}
     mavenCentral()
-
 }
 
 sourceSets {

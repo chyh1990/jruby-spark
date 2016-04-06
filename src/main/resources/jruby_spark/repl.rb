@@ -153,4 +153,5 @@ Welcome to
   puts "SparkContext available as $sc"
 
   repl.start
+
 end

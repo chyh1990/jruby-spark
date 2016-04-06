@@ -62,6 +62,12 @@ module JRubySpark
 
   Tuple2 = Java::Scala::Tuple2
 
+  class RDDError < StandardError
+    def initialize(msg = 'unknown rdd error')
+      super
+    end
+  end
+
   def self.main?
     $JRUBY_SPARK_PROCESS != 'executor'
   end
@@ -115,7 +121,7 @@ module JRubySpark
 
     def self.merge_rdd name, from_clazz = self, to_clazz = self
       define_method(name) do |rdd, *args|
-        raise "not a #{from_rdd}" unless from_clazz === rdd
+        raise RDDError, "not a #{from_rdd}" unless from_clazz === rdd
         to_clazz.new(@jrdd.__send__(name, rdd.__getobj__, *args))
       end
     end
@@ -134,10 +140,7 @@ module JRubySpark
       @jrdd.__send__(:aggregate, zero, create_func!(JFunction2, seqOp), create_func!(JFunction2, combOp))
     end
 
-    def cartesian pair_rdd
-      raise 'not a pair rdd' unless PairRDD === pair_rdd
-      PairRdd.new(@jrdd.__send__(:cartesian, pair_rdd.__getobj__))
-    end
+    merge_rdd :cartesian, RDD, PairRDD
 
     def collect
       @jrdd.collect.map {|e| RDDLike._clean_object e}
@@ -224,7 +227,7 @@ module JRubySpark
     end
 
     def create_func! fclazz, f
-      raise 'not a lambda' unless Proc === f || Symbol === f
+      raise RDDError, 'not a lambda' unless Proc === f || Symbol === f
       payload = Marshal.dump(f).to_java_bytes
       fclazz.new(payload)
     end
@@ -271,7 +274,7 @@ module JRubySpark
 
   class DoubleRDD
     def self.from_rdd rdd
-      raise 'not an rdd' unless RDD === rdd
+      raise RDDError, 'not an rdd' unless RDD === rdd
       @jrdd = JavaDoubleRDD.fromRDD rdd.__getobj__.rdd
     end
 
@@ -307,7 +310,7 @@ module JRubySpark
     # TODO combineByKey
     # TODO flatMapValues
 
-    def fold_by_key zero, num_partitions = nil, f = nil, &block
+    def fold_by_key(zero, num_partitions = nil, f = nil, &block)
       f ||= block if block
       num_partitions ||= @jrdd.getNumPartitions
       PairRDD.new(@jrdd.foldByKey(zero, num_partitions, create_func!(JFunction2, f)))
