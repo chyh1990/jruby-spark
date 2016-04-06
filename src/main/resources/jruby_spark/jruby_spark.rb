@@ -52,6 +52,7 @@ end
 module JRubySpark
   java_import 'org.apache.spark.SparkConf'
   java_import 'org.apache.spark.api.java.JavaRDD'
+  java_import 'org.apache.spark.storage.StorageLevel'
   java_import 'org.apache.spark.api.java.JavaDoubleRDD'
   java_import 'org.apache.spark.api.java.JavaSparkContext'
 
@@ -101,14 +102,13 @@ module JRubySpark
     #   f ||= Proc.new(block) if block_given?
     #   callJava :map, JFunction, f
     # end
-    def self.def_transform name, fclazz, ret_clazz = RDD
-      define_method(name) do |f = nil, &block|
+    def self.def_transform name, fclazz, ret_clazz = RDD, default_func = nil
+      define_method(name) do |f = default_func, &block|
         f ||= block if block
         if ret_clazz
           ret_clazz.new(callJava(name, fclazz, f))
         else
           callJava(name, fclazz, f)
-          nil
         end
       end
     end
@@ -170,10 +170,10 @@ module JRubySpark
 
     def_transform :key_by, JFunction, PairRDD
 
-    def_transform :reduce, JFunction2
+    def_transform :reduce, JFunction2, nil
     def_transform :foreach, JVoidFunction, nil
     def_transform :map, JFunction
-    def_transform :map_to_double, JDoubleFunction, DoubleRDD
+    def_transform :map_to_double, JDoubleFunction, DoubleRDD, :to_f
     def_transform :map_to_pair, JPairFunction, PairRDD
 
     def map_partitions_with_index f = nil, preservesPartitioning = false, &block
@@ -306,9 +306,45 @@ module JRubySpark
       @jrdd.collectAsMap.each {|e| h[RDDLike._clean_object(e[0])] = RDDLike._clean_object(e[1])}
       h
     end
-    # TODO cogroup 2/3
-    # TODO combineByKey
-    # TODO flatMapValues
+    def cogroup *args
+      case args.size
+      when 1
+        PairRDD.new(@jrdd.cogroup(args[0].__getobj__))
+      when 2
+        if PairRDD === args[1]
+          PairRDD.new(@jrdd.cogroup(args[0].__getobj__), args[1].__getobj__)
+        else
+          PairRDD.new(@jrdd.cogroup(args[0].__getobj__), args[1])
+        end
+      when 3
+        if PairRDD === args[2]
+          PairRDD.new(@jrdd.cogroup(args[0].__getobj__), args[1].__getobj__, args[2].__getobj__)
+        else
+          PairRDD.new(@jrdd.cogroup(args[0].__getobj__), args[1].__getobj__, args[2])
+        end
+      when 4
+          PairRDD.new(@jrdd.cogroup(args[0].__getobj__), args[1].__getobj__, args[2].__getobj__, args[3])
+      else
+        raise ArgumentError('unexpected argument numbers')
+      end
+    end
+
+    def combine_by_key(combiner, mergeV, mergeC, num_partitions = nil)
+      if num_partitions
+        # TODO more overrides
+        PairRDD.new(@jrdd.combineByKey(create_func!(JFunction, combiner),
+                                       create_func!(JFunction2, mergeV),
+                                       create_func!(JFunction2, mergeC),
+                                       num_partitions))
+      else
+        PairRDD.new(@jrdd.combineByKey(create_func!(JFunction, combiner),
+                                       create_func!(JFunction2, mergeV),
+                                       create_func!(JFunction2, mergeC),
+                                      ))
+      end
+    end
+
+    def_transform :flat_map_values, JFunction, PairRDD
 
     def fold_by_key(zero, num_partitions = nil, f = nil, &block)
       f ||= block if block
@@ -369,8 +405,33 @@ module JRubySpark
       RDD.new(@jctx.wholeTextFiles(path, min_partitions))
     end
 
-    def parallelize(e)
-      RDD.new @jctx.parallelize(e)
+    def parallelize(e, num_partitions = nil)
+      if num_partitions
+        RDD.new @jctx.parallelize(e.to_a, num_partitions)
+      else
+        RDD.new @jctx.parallelize(e.to_a)
+      end
+    end
+
+    def parallelize_doubles(e, num_partitions = nil)
+      if num_partitions
+        RDD.new @jctx.parallelizeDoubles(e.to_a, num_partitions)
+      else
+        RDD.new @jctx.parallelizeDoubles(e.to_a)
+      end
+    end
+
+    def parallelize_pairs(e, num_partitions = nil)
+      if num_partitions
+        RDD.new @jctx.parallelizePairs(e.to_a, num_partitions)
+      else
+        RDD.new @jctx.parallelizePairs(e.to_a)
+      end
+    end
+
+
+    def inspect
+      "#<#{self.class} jctx=#{@jctx.inspect}>"
     end
   end
 
