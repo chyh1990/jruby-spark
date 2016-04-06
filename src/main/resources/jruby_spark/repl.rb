@@ -139,6 +139,7 @@ if __FILE__ == $0
 
   $sc = JRubySpark::SparkContext.new conf
   $sc.setLogLevel("WARN")
+  $sqlContext = JRubySpark::SQLContext.new $sc
 
   logo = <<-'LOGO'
 Welcome to
@@ -150,7 +151,7 @@ Welcome to
   LOGO
   puts logo.gsub('$version', $sc.version.to_s)
   puts "Using Ruby #{RUBY_VERSION}(#{RUBY_PLATFORM})"
-  puts "SparkContext available as $sc"
+  puts "SparkContext available as $sc, SQLContext available as $SQLContext"
 
   repl.start
 
