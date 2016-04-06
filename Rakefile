@@ -33,11 +33,14 @@ task :package => JAR_FILE do |t|
   bindir = File.join(out, 'bin')
   libsdir = File.join(out, 'libs')
   mkdir_p [bindir, libsdir]
-  cp Dir.glob('libs/*.jar'), libsdir
+  cp Dir.glob('libs/jruby-complete-*.jar'), libsdir
+  cp Dir.glob('libs/*gems.jar'), libsdir
   cp JAR_FILE, libsdir
   ['jruby-spark-repl.sh'].each do |f|
     cp File.join('scripts', f), bindir
   end
+
+  cp 'README.md', out
 
   outpkg = out + ".tar.gz"
   puts "Packing #{outpkg}"
