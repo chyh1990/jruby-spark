@@ -25,7 +25,27 @@
           <root url="jar:///data/chenyh/work/spark/jruby-spark/libs/jruby-9.1.0.0.jar!/" />
         </CLASSES>
         <JAVADOC />
-        <SOURCES />
+        <SOURCES>
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/bench" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/core/src/main/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/core/src/main/resources" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/core/src/test/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby-complete/src/templates/osgi_many_bundles_with_embedded_gems/gems-bundle/src/main/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby-complete/src/templates/osgi_many_bundles_with_embedded_gems/scripts-bundle/src/main/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby-complete/src/templates/osgi_many_bundles_with_embedded_gems/test/src/test/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby-jars/src/it/extended/src/test/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby/src/it/bouncycastle/src/test/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby/src/it/extended/src/test/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby/src/it/many_jars_with_embedded_gems/app/src/test/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby/src/it/many_jars_with_embedded_gems_ng/app/src/test/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby/src/it/terminate-container-and-extensions-GH-3300/src/test/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/maven/jruby/src/templates/osgi_all_inclusive/src/test/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/samples/jrubyc_java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/spec" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/test" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/truffle/src/main/java" />
+          <root url="jar:///data/chenyh/prog/jruby-dist/jruby-src-9.1.0.0-SNAPSHOT.zip!/jruby-9.1.0.0-SNAPSHOT/truffle/src/test/java" />
+        </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="library" name="Gradle: org.apache.spark:spark-core_2.10:1.6.0" level="project" />
