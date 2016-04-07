@@ -319,6 +319,13 @@ module JRubySpark
   end
 
   class SparkContext < Delegator
+
+    def self.wrap_return name, ret_clazz
+      define_method(name) do |*args|
+        ret_clazz.new(@jctx.__send__(name, *args))
+      end
+    end
+
     def initialize conf
       ctx = JavaSparkContext.new conf
       @jctx = ctx
@@ -328,17 +335,13 @@ module JRubySpark
       @jctx
     end
 
-    def text_file(path, min_partitions = nil)
-      if min_partitions
-        RDD.new(@jctx.textFile(path, min_partitions))
-      else
-        RDD.new(@jctx.textFile(path))
-      end
-    end
-
-    def whole_text_files(path, min_partitions)
-      RDD.new(@jctx.wholeTextFiles(path, min_partitions))
-    end
+    wrap_return :text_file, RDD
+    wrap_return :whole_text_files, RDD
+    wrap_return :hadoop_file, PairRDD
+    wrap_return :hadoop_rdd, PairRDD
+    wrap_return :new_api_hadoop_rdd, PairRDD
+    wrap_return :object_file, RDD
+    wrap_return :sequence_file, PairRDD
 
     def parallelize(e, num_partitions = nil)
       if num_partitions
@@ -362,6 +365,15 @@ module JRubySpark
       else
         PairRDD.new @jctx.parallelizePairs(e.to_a)
       end
+    end
+
+    def union *args
+      raise ArgumentError, 'empty set' if args.empty?
+      clazz = args.first
+      raise ArgumentError, 'RDD expected' unless clazz.is_a? RDDLike
+      args.map!{|x| x.__getobj__}
+      first = args.shift
+      clazz.class.new(@jctx.union(first, args))
     end
 
     def accumulator inital_value, name = nil

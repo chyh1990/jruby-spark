@@ -52,6 +52,14 @@ module JRubySpark
     wrap_return :window
   end
 
+  class PairDStream
+    include RDDLike
+    include DStreamLike
+
+    extend DefHelper
+
+  end
+
   class StreamingContext < Delegator
     def initialize sc, duration_ms = 1000
       ctx = JavaStreamingContext.new $sc.__getobj__, Duration.new(duration_ms)
