@@ -93,12 +93,14 @@ module JRubySpark
 
     def_transform :flat_map, JFlatMapFunction
     def_transform :flat_map_to_double, JFlatMapFunction, DoubleRDD
-    # flat_map_to_pair
+    def_transform :flat_map_to_pair, JFlatMapFunction, PairRDD
     def fold zero, f = nil, &block
       f ||= block if block
       RDD.new @jrdd.fold(zero, create_func!(JFunction2, f))
     end
     def_transform :foreach_partition, JVoidFunction, nil
+
+    wrap_return :glom, RDD
 
     def group_by f = nil, num_partitions = nil, &block
       f ||= block if block
@@ -297,7 +299,7 @@ module JRubySpark
     wrap_return :persist
 
     def_transform :reduce_by_key, JFunction2, PairRDD
-    # TODO reduce by key
+
     def reduce_by_key_locally
       @jrdd.reduceByKeyLocally(create_func!(JFunction2, f))
     end
@@ -362,9 +364,19 @@ module JRubySpark
       end
     end
 
+    def accumulator inital_value, name = nil
+      args = [inital_value]
+      args << name if name
+      # always use long accumulator
+      if Fixnum === inital_value
+        args << Java::OrgApacheSparkJruby::JLongAccumulatorParam.new
+      end
+      @jctx.__send__(:accumulator, *args)
+    end
 
     def inspect
       "#<#{self.class} jctx=#{@jctx.inspect}>"
     end
   end
+
 end

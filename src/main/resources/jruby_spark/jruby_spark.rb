@@ -88,6 +88,7 @@ module JRubySpark
 end
 
 require 'jruby_spark/rdd'
+require 'jruby_spark/streaming'
 require 'jruby_spark/sql'
 
 module Kernel
