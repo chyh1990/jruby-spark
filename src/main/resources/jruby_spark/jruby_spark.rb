@@ -70,8 +70,12 @@ module JRubySpark
     end
   end
 
+  def self.executor?
+    $JRUBY_SPARK_PROCESS == 'executor'
+  end
+
   def self.main?
-    $JRUBY_SPARK_PROCESS != 'executor'
+    !self.executor?
   end
 
   module Helpers

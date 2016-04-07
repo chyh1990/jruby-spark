@@ -33,7 +33,7 @@ do
 	esac
 done
 
-echo "spark-submit arguments: $spark_args" >&2
+echo "spark-submit arguments: ${spark_args[@]}" >&2
 
 if [[ -z "$rbmain_full" ]]; then
 	echo "ruby file not specified" >&2
@@ -82,7 +82,7 @@ $SPARK_HOME/bin/spark-submit  \
 	--conf "spark.executor.jruby.bootstrap_file=$bootstrap_file" \
 	--jars $jars \
 	--class org.apache.spark.jruby.ScriptMain \
-	$spark_args \
+	"${spark_args[@]}" \
 	"$jruby_spark_jar" "$bootstrap_file" "$@"
 
 rm -f "$tmpjar"
