@@ -1,28 +1,48 @@
 module JRubySpark
 
-  class RDDLike < Delegator
-  end
-
-  class RDD < RDDLike
-  end
-
-  class PairRDD < RDDLike
-  end
-
-  class DoubleRDD < RDDLike
-  end
-
-  class RDDLike
+  class RDDBase < Delegator
     def initialize jrdd
       super
     end
 
+    def __getobj__
+      @jrdd
+    end
+
+    def __setobj__(obj)
+      @jrdd = obj
+    end
+
+    protected
+    def callJava method, fclazz, f, args = []
+      args = [create_func!(fclazz, f)] + args
+      @jrdd.__send__(method, *args)
+    end
+
+    def create_func! fclazz, f
+      raise RDDError, 'not a lambda' unless Proc === f || Symbol === f
+      payload = Marshal.dump(f).to_java_bytes
+      fclazz.new(payload)
+    end
+
+  end
+
+  class RDD < RDDBase
+  end
+
+  class PairRDD < RDDBase
+  end
+
+  class DoubleRDD < RDDBase
+  end
+
+  module DefHelper
     # create delegator method as:
     # def map f = nil, &block
     #   f ||= Proc.new(block) if block_given?
     #   callJava :map, JFunction, f
     # end
-    def self.def_transform name, fclazz, ret_clazz = RDD, default_func = nil
+    def def_transform name, fclazz, ret_clazz = RDD, default_func = nil
       define_method(name) do |f = default_func, &block|
         f ||= block if block
         if ret_clazz
@@ -33,20 +53,20 @@ module JRubySpark
       end
     end
 
-    def self.wrap_return name, ret_clazz = self
+    def wrap_return name, ret_clazz = self
       define_method(name) do |*args|
         ret_clazz.new(@jrdd.__send__(name, *args))
       end
     end
 
-    def self.merge_rdd name, from_clazz = self, to_clazz = self
+    def merge_rdd name, from_clazz = self, to_clazz = self
       define_method(name) do |rdd, *args|
         raise RDDError, "not a #{from_rdd}" unless from_clazz === rdd
         to_clazz.new(@jrdd.__send__(name, rdd.__getobj__, *args))
       end
     end
 
-    def self._clean_object e
+    def _clean_object e
         if RubyObjectWrapper === e
           t = e.get
           # XXX java null == nil is false? maybe a bug in jruby
@@ -55,6 +75,11 @@ module JRubySpark
           e
         end
     end
+
+  end
+
+  module RDDLike
+    extend DefHelper
 
     def aggregate zero, seqOp, combOp
       @jrdd.__send__(:aggregate, zero, create_func!(JFunction2, seqOp), create_func!(JFunction2, combOp))
@@ -128,32 +153,14 @@ module JRubySpark
       PairRDD.new @jrdd.zipWithUniqueId
     end
 
-    def __getobj__
-      @jrdd
-    end
-
-    def __setobj__(obj)
-      @jrdd = obj
-    end
-
     def inspect
       "#<#{self.class}: #{@jrdd.inspect}>"
-    end
-
-    protected
-    def callJava method, fclazz, f, args = []
-      args = [create_func!(fclazz, f)] + args
-      @jrdd.__send__(method, *args)
-    end
-
-    def create_func! fclazz, f
-      raise RDDError, 'not a lambda' unless Proc === f || Symbol === f
-      payload = Marshal.dump(f).to_java_bytes
-      fclazz.new(payload)
     end
   end
 
   class RDD
+    extend DefHelper
+    include RDDLike
     # def filter &block
     #   f = Proc.new block
     #   wrap = lambda {|x|
@@ -193,6 +200,9 @@ module JRubySpark
   end
 
   class DoubleRDD
+    extend DefHelper
+    include RDDLike
+
     def self.from_rdd rdd
       raise RDDError, 'not an rdd' unless RDD === rdd
       @jrdd = JavaDoubleRDD.fromRDD rdd.__getobj__.rdd
@@ -215,6 +225,9 @@ module JRubySpark
   end
 
   class PairRDD
+    extend DefHelper
+    include RDDLike
+
     # TODO aggregatebykey
     wrap_return :cache
     wrap_return :coalesce
