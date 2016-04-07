@@ -17,6 +17,5 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" scope="PROVIDED" name="RVM: jruby-1.7.19 facet library" level="application" />
   </component>
 </module>

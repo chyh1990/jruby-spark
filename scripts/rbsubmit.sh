@@ -55,8 +55,14 @@ if [[ -f "$rbmain_full" ]]; then
 	fi
 
 	jar cf $tmpjar -C "$rbmain_dir" "$rbmain"
+elif [[ -d "$rbmain_full" ]]; then
+	echo "packing up user script directory..." >&2
+	dir=$(basename "$rbmain_full")
+	rbmain="$dir".rb
+
+	jar cf $tmpjar -C "$rbmain_full" .
 else
-	echo "directory not supported"
+	echo "rb file or directory not found"
 	exit 1
 fi
 
