@@ -1,0 +1,3 @@
+bob 22
+alice 18
+edward 9

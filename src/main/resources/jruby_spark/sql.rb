@@ -1,7 +1,7 @@
 require 'jruby_spark/sql_schema'
 
 module JRubySpark
-  # java_import 'org.apache.spark.sql.SQLContext'
+  java_import 'org.apache.spark.sql.DataFrame'
 
   class SQLContext < Delegator
     def initialize sc
@@ -21,6 +21,12 @@ module JRubySpark
 
     def inspect
       "#<#{self.class} jctx=#{@jctx.inspect}>"
+    end
+  end
+
+  class DataFrame
+    def rdd
+      RDD.new self.javaRDD
     end
   end
 end

@@ -76,11 +76,12 @@ public class TypeUtils {
         if (rubyObject instanceof RubyBoolean)
             return rubyObject.isTrue();
         else if (rubyObject instanceof RubyFixnum)
-            return ((RubyFixnum) rubyObject).getLongValue();
-        else if (rubyObject instanceof RubyFloat)
-            return ((RubyFloat) rubyObject).getValue();
+            return ((RubyFixnum) rubyObject).getIntValue();
         else if (rubyObject instanceof RubyBignum)
             return ((RubyBignum) rubyObject).getBigIntegerValue();
+        else if (rubyObject instanceof RubyFloat)
+            return ((RubyFloat) rubyObject).getValue();
+
 
         IRubyObject origObject = rubyObject;
         if (rubyObject.dataGetStruct() instanceof JavaObject) {
