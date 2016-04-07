@@ -119,5 +119,12 @@ class ProcMarshalTest < Test::Unit::TestCase
     end
     assert_equal check_call(f, [1,2]), 13
   end
+
+  def test_another_lambda
+    v1 = 10
+    f = lambda {|x| x + v1}
+    f1 = lambda {|y| y + f.call(y+1)}
+    assert_equal check_call(f1, [7]), 25
+  end
 end
 

@@ -19,7 +19,7 @@ module JRubySpark
     wrap_return :count_by_value_and_window, PairDStream
     wrap_return :count_by_window, DStream
     def_transform :flat_map, JFlatMapFunction, DStream
-    def_transform :flat_map_to_pair, JFlatMapFunction, PairDStream
+    def_transform :flat_map_to_pair, JPairFlatMapFunction, PairDStream
     def_transform :foreach_rdd, JVoidFunction, nil
     #def_transform :foreach_rdd_with_time, JVoidFunction2, nil
     wrap_return :glom, DStream

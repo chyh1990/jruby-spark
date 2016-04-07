@@ -61,7 +61,7 @@ module JRubySpark
 
     def merge_rdd name, from_clazz = self, to_clazz = self
       define_method(name) do |rdd, *args|
-        raise RDDError, "not a #{from_rdd}" unless from_clazz === rdd
+        raise RDDError, "not a #{from_clazz}" unless rdd.is_a? from_clazz
         to_clazz.new(@jrdd.__send__(name, rdd.__getobj__, *args))
       end
     end
@@ -93,7 +93,8 @@ module JRubySpark
 
     def_transform :flat_map, JFlatMapFunction
     def_transform :flat_map_to_double, JFlatMapFunction, DoubleRDD
-    def_transform :flat_map_to_pair, JFlatMapFunction, PairRDD
+    def_transform :flat_map_to_pair, JPairFlatMapFunction, PairRDD
+
     def fold zero, f = nil, &block
       f ||= block if block
       RDD.new @jrdd.fold(zero, create_func!(JFunction2, f))
@@ -279,6 +280,8 @@ module JRubySpark
       end
     end
 
+    wrap_return :distinct
+    def_transform :filter, JFunction, PairRDD
     def_transform :flat_map_values, JFunction, PairRDD
 
     def fold_by_key(zero, num_partitions = nil, f = nil, &block)
@@ -314,6 +317,7 @@ module JRubySpark
     wrap_return :sort_by_key
     merge_rdd :substract
     merge_rdd :substract_by_key
+    merge_rdd :union
     wrap_return :unpersist
     wrap_return :values, RDD
   end
@@ -326,7 +330,25 @@ module JRubySpark
       end
     end
 
-    def initialize conf
+    def initialize arg
+      if Hash === arg
+        conf = SparkConf.new
+        arg.each {|k, v|
+          m1 = "set_#{arg}".to_sym
+          m2 = "set#{arg}".to_sym
+          if conf.respond_to? m1
+            conf.__send__(m1.to_sym, v)
+          elsif conf.respond_to? m2
+            conf.__send__(m2.to_sym, v)
+          else
+            conf.set(k.to_s, v)
+          end
+        }
+      elsif SparkConf === arg
+        conf = arg
+      else
+        raise ArgumentError, 'argument should be hash or SparkConf'
+      end
       ctx = JavaSparkContext.new conf
       @jctx = ctx
     end
@@ -352,10 +374,11 @@ module JRubySpark
     end
 
     def parallelize_doubles(e, num_partitions = nil)
+      t = e.to_a.to_java(:double)
       if num_partitions
-        DoubleRDD.new @jctx.parallelizeDoubles(e.to_a, num_partitions)
+        DoubleRDD.new @jctx.parallelizeDoubles(t, num_partitions)
       else
-        DoubleRDD.new @jctx.parallelizeDoubles(e.to_a)
+        DoubleRDD.new @jctx.parallelizeDoubles(t)
       end
     end
 

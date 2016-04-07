@@ -57,7 +57,7 @@ module JRubySpark
   java_import 'org.apache.spark.api.java.JavaDoubleRDD'
   java_import 'org.apache.spark.api.java.JavaSparkContext'
 
-  %w(JFunction JFunction2 JVoidFunction JFlatMapFunction JPairFunction JDoubleFunction).each do |e|
+  %w(JFunction JFunction2 JVoidFunction JFlatMapFunction JPairFunction JDoubleFunction JPairFlatMapFunction).each do |e|
     java_import 'org.apache.spark.jruby.function.' + e
   end
   java_import 'org.apache.spark.jruby.RubyObjectWrapper'
