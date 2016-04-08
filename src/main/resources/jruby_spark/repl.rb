@@ -151,7 +151,7 @@ Welcome to
   LOGO
   puts logo.gsub('$version', $sc.version.to_s)
   puts "Using Ruby #{RUBY_VERSION}(#{RUBY_PLATFORM})"
-  puts "SparkContext available as $sc, SQLContext available as $SQLContext"
+  puts "SparkContext available as $sc, SQLContext available as $sqlContext"
 
   repl.start
 

@@ -322,6 +322,27 @@ module JRubySpark
     wrap_return :values, RDD
   end
 
+  class Broadcast
+    java_import org.apache.spark.jruby.TypeUtils
+    def initialize(sc, v)
+      t = TypeUtils.rubyToJava(JRuby.runtime, v)
+      @jv = sc.__getobj__.broadcast(t)
+    end
+
+    def unpersist(*args)
+      @jv.unpersist *args
+    end
+
+    def destroy
+      @jv.destroy
+    end
+
+    def value
+      v = @jv.value
+      TypeUtils.javaToRuby(JRuby.runtime, v)
+    end
+  end
+
   class SparkContext < Delegator
 
     def self.wrap_return name, ret_clazz
@@ -407,6 +428,10 @@ module JRubySpark
         args << Java::OrgApacheSparkJruby::JLongAccumulatorParam.new
       end
       @jctx.__send__(:accumulator, *args)
+    end
+
+    def broadcast v
+      Broadcast.new self, v
     end
 
     def inspect
