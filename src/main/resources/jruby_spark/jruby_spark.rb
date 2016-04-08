@@ -83,6 +83,10 @@ module JRubySpark
     def self.to_iter it
       TypeUtils::rubyToIterable JRuby.runtime, it
     end
+
+    def self.to_ruby e
+      TypeUtils::javaToRuby JRuby.runtime, e
+    end
   end
 
   module Functional

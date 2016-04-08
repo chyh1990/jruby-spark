@@ -65,17 +65,6 @@ module JRubySpark
         to_clazz.new(@jrdd.__send__(name, rdd.__getobj__, *args))
       end
     end
-
-    def _clean_object e
-        if RubyObjectWrapper === e
-          t = e.get
-          # XXX java null == nil is false? maybe a bug in jruby
-          t.nil? ? nil : t
-        else
-          e
-        end
-    end
-
   end
 
   module RDDLike
@@ -88,7 +77,7 @@ module JRubySpark
     merge_rdd :cartesian, RDD, PairRDD
 
     def collect
-      @jrdd.collect.map {|e| RDDLike._clean_object e}
+      @jrdd.collect.map {|e| Helpers.to_ruby e}
     end
 
     def_transform :flat_map, JFlatMapFunction
@@ -99,7 +88,15 @@ module JRubySpark
       f ||= block if block
       RDD.new @jrdd.fold(zero, create_func!(JFunction2, f))
     end
-    def_transform :foreach_partition, JVoidFunction, nil
+
+    def foreach_partition f = nil, &block
+      f ||= block if block
+      proxy_f = lambda {|__it|
+        __rb_it = __it.lazy.map{|x| Helpers.to_ruby x}
+        f.call(__rb_it)
+      }
+      RDD.new @jrdd.foreachPartition(create_func!(JVoidFunction, proxy_f))
+    end
 
     wrap_return :glom, RDD
 
@@ -132,7 +129,11 @@ module JRubySpark
 
     def map_partitions f = nil, preservesPartitioning = false, &block
       f ||= block if block
-      RDD.new @jrdd.mapPartitions(create_func!(JFlatMapFunction, f), preservesPartitioning)
+      proxy_f = lambda {|__it|
+        __rb_it = __it.lazy.map{|x| Helpers.to_ruby x}
+        f.call(__rb_it)
+      }
+      RDD.new @jrdd.mapPartitions(create_func!(JFlatMapFunction, proxy_f), preservesPartitioning)
     end
 
     def tree_aggregate zero, seqOp, combOp, depth = 2
@@ -239,7 +240,7 @@ module JRubySpark
     def collect_as_map
       # XXX how to safely sanity key/values
       h = Hash.new
-      @jrdd.collectAsMap.each {|e| h[RDDLike._clean_object(e[0])] = RDDLike._clean_object(e[1])}
+      @jrdd.collectAsMap.each {|e| h[Helpers.to_ruby(e[0])] = Helpers.to_ruby(e[1])}
       h
     end
     def cogroup *args
