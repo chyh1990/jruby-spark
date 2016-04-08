@@ -14,7 +14,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///data/chenyh/work/spark/jruby-spark/libs/jruby-9.1.0.0.jar!/" />
+          <root url="jar:///data/chenyh/work/spark/jruby-spark/libs/jruby-complete-9.1.0.0-SNAPSHOT.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

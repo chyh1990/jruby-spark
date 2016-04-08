@@ -53,6 +53,8 @@ public class TypeUtils {
     */
 
     public static IRubyObject javaToRuby(Ruby runtime, Object obj) {
+        if (obj == null)
+            return runtime.getNil();
         if (obj instanceof RubyObjectWrapper) {
             RubyObjectWrapper wrapper = (RubyObjectWrapper) obj;
             return wrapper.get();
@@ -73,7 +75,9 @@ public class TypeUtils {
             return raw;
         IRubyObject rubyObject = (IRubyObject)raw;
 
-        if (rubyObject instanceof RubyBoolean)
+        if (rubyObject.isNil())
+            return null;
+        else if (rubyObject instanceof RubyBoolean)
             return rubyObject.isTrue();
         else if (rubyObject instanceof RubyFixnum)
             return ((RubyFixnum) rubyObject).getIntValue();

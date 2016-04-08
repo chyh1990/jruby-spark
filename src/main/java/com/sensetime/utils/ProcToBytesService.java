@@ -586,8 +586,8 @@ public class ProcToBytesService implements BasicLibraryService {
         @JRubyMethod
         public static IRubyObject marshal_dump(ThreadContext context, IRubyObject self) {
             Ruby ruby = context.getRuntime();
-            if (!RubyInstanceConfig.IR_WRITING)
-                throw ruby.newRuntimeError("ir.writing must be enable");
+            if (!(RubyInstanceConfig.IR_WRITING_DYN || RubyInstanceConfig.IR_WRITING))
+                throw ruby.newRuntimeError("ir.writing.dyn must be enable");
             RubyProc proc = (RubyProc) self;
             /*
             if (!proc.lambda_p(context).isTrue())

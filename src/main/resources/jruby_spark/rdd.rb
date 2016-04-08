@@ -324,9 +324,8 @@ module JRubySpark
   end
 
   class Broadcast
-    java_import org.apache.spark.jruby.TypeUtils
     def initialize(sc, v)
-      t = TypeUtils.rubyToJava(JRuby.runtime, v)
+      t = Helpers.to_java(v)
       @jv = sc.__getobj__.broadcast(t)
     end
 
@@ -340,7 +339,7 @@ module JRubySpark
 
     def value
       v = @jv.value
-      TypeUtils.javaToRuby(JRuby.runtime, v)
+      Helpers.to_ruby(v)
     end
   end
 

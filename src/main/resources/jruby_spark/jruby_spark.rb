@@ -87,6 +87,10 @@ module JRubySpark
     def self.to_ruby e
       TypeUtils::javaToRuby JRuby.runtime, e
     end
+
+    def self.to_java e
+      TypeUtils::rubyToJava JRuby.runtime, e
+    end
   end
 
   module Functional

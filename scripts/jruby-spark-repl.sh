@@ -31,7 +31,7 @@ else
 	fi
 	jars=$JRUBY_SPARK_HOME/libs/jruby-complete-"$JRUBY_VERSION".jar,$JRUBY_SPARK_HOME/libs/pry-gems.jar
 	$SPARK_HOME/bin/spark-submit --master=local --conf \
-		'spark.driver.extraJavaOptions=-Djruby.ir.writing=true' \
+		'spark.driver.extraJavaOptions=-Djruby.ir.writing.dyn=true' \
 		--jars $jars \
 		"$jruby_spark_jar" org.apache.spark.jruby.REPLMain
 fi
