@@ -89,6 +89,12 @@ module JRubySpark
     ADD = lambda {|x, y| x + y}
     # SUB = lambda {|x, y| x - y}
   end
+
+  def self.add_vendor_gems!
+    vendor_path = 'uri:classloader:/vendor/bundle'
+    gem_path = File.join(vendor_path, 'jruby', RUBY_VERSION)
+    Gem::Specification.add_dir gem_path
+  end
 end
 
 require 'jruby_spark/rdd'

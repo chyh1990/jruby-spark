@@ -42,6 +42,7 @@ fi
 
 
 tmpjar=$(mktemp /tmp/spark-submit-XXXXX.jar)
+# tmpjar=submit-test.jar
 
 if [[ -f "$rbmain_full" ]]; then
 	echo "packing up user scripts..." >&2

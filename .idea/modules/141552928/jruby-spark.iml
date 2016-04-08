@@ -14,6 +14,7 @@
     <content url="file:///data/chenyh/work/spark/jruby-spark">
       <excludeFolder url="file:///data/chenyh/work/spark/jruby-spark/.gradle" />
       <excludeFolder url="file:///data/chenyh/work/spark/jruby-spark/build" />
+      <excludeFolder url="file:///data/chenyh/work/spark/jruby-spark/examples/redis_map/vendor/bundle" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
