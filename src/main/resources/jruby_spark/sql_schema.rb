@@ -15,7 +15,7 @@ module JRubySpark
     def self.build_struct
       _layout!
 
-      fields = @@schema.map{|e|
+      fields = @schema.map{|e|
         dt = case e[1].to_s.to_sym
         when :Fixnum
           DataTypes::IntegerType
@@ -38,21 +38,22 @@ module JRubySpark
     end
 
     def self.dataframe_schema
-      @@dataframe_schema ||= self.build_struct
+      @dataframe_schema ||= self.build_struct
     end
 
     def self._layout!
-      @@schema ||= []
-      @@schema_index ||= @@schema.to_enum.with_index.map{|e, i| [e[0], i]}.to_h
+      @schema ||= []
+      @schema_index ||= @schema.to_enum.with_index.map{|e, i| [e[0], i]}.to_h
     end
 
     def self.field name, type, nullable = true
-      @@schema ||= []
-      @@schema << [name, type, nullable]
+      @schema ||= []
+      @schema << [name, type, nullable]
     end
 
     def self.fields
-      @@schema.map{ |e| e.first}
+      @schema ||= []
+      @schema.map{ |e| e.first}
     end
 
     # return Row
@@ -62,14 +63,14 @@ module JRubySpark
 
       vals = nil
       if Hash === args.first
-        vals = Array.new @@schema.size
+        vals = Array.new @schema.size
         args[0].each {|k, v|
-          idx = @@schema_index[k]
+          idx = @schema_index[k]
           raise "#{k} is not a field in #{self}" unless idx
           vals[idx] = v
         }
       else
-        raise ArgumentError, 'field count mismatch' unless args.size == @@schema.size
+        raise ArgumentError, 'field count mismatch' unless args.size == @schema.size
         vals = args
       end
       # coercing handle by JRuby
