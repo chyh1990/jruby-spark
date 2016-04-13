@@ -19,6 +19,7 @@ class RubyObjectWrapper(private var _obj: IRubyObject)
     //println("HERE")
     if (_obj == null)
       return 0
+    // println(this.getClass.getClassLoader.getClass.getName)
     JRubySizeEstimator.estimate(_obj)
   }
 

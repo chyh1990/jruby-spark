@@ -5,7 +5,7 @@ import java.lang.reflect.{Field, Modifier}
 import java.util
 import java.util.Random
 
-import com.google.common.collect.MapMaker
+// import com.google.common.collect.MapMaker
 import org.apache.spark.Logging
 import org.apache.spark.util.KnownSizeEstimation
 import org.apache.spark.util.collection.OpenHashSet
@@ -41,7 +41,8 @@ object JRubySizeEstimator extends Logging {
 
   // A cache of ClassInfo objects for each class
   // We use weakKeys to allow GC of dynamically created classes
-  private val classInfos = new MapMaker().weakKeys().makeMap[Class[_], ClassInfo]()
+  // private val classInfos = new MapMaker().weakKeys().makeMap[Class[_], ClassInfo]()
+  private val classInfos = new util.WeakHashMap[Class[_], ClassInfo]
 
   // Object and pointer sizes are arch dependent
   private var is64bit = false
