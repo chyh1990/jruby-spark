@@ -5,7 +5,7 @@ module JRubySpark
 
   class SQLContext < Delegator
     def initialize sc
-      ctx = Java::OrgApacheSparkSql::SQLContext.new $sc.__getobj__
+      ctx = Java::OrgApacheSparkSql::SQLContext.new sc.__getobj__
       @jctx = ctx
     end
 

@@ -80,6 +80,10 @@ module JRubySpark
       @jrdd.collect.map {|e| Helpers.to_ruby e}
     end
 
+    def take(n)
+      @jrdd.take(n).map {|e| Helpers.to_ruby e}
+    end
+
     def_transform :flat_map, JFlatMapFunction
     def_transform :flat_map_to_double, JFlatMapFunction, DoubleRDD
     def_transform :flat_map_to_pair, JPairFlatMapFunction, PairRDD
@@ -387,10 +391,11 @@ module JRubySpark
     wrap_return :sequence_file, PairRDD
 
     def parallelize(e, num_partitions = nil)
+      t = e.map{|e| Helpers.to_java e}.to_a
       if num_partitions
-        RDD.new @jctx.parallelize(e.to_a, num_partitions)
+        RDD.new @jctx.parallelize(t, num_partitions)
       else
-        RDD.new @jctx.parallelize(e.to_a)
+        RDD.new @jctx.parallelize(t)
       end
     end
 
@@ -404,10 +409,11 @@ module JRubySpark
     end
 
     def parallelize_pairs(e, num_partitions = nil)
+      t = e.map{|e| Helpers.to_java e}.to_a
       if num_partitions
-        PairRDD.new @jctx.parallelizePairs(e.to_a, num_partitions)
+        PairRDD.new @jctx.parallelizePairs(t, num_partitions)
       else
-        PairRDD.new @jctx.parallelizePairs(e.to_a)
+        PairRDD.new @jctx.parallelizePairs(t)
       end
     end
 
