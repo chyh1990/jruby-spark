@@ -79,7 +79,8 @@ bootstrap_file="classpath:$rbmain"
 echo "submitting jobs..." >&2
 
 $SPARK_HOME/bin/spark-submit  \
-	--conf 'spark.driver.extraJavaOptions=-Djruby.ir.writing.dyn=true' \
+	--conf spark.driver.extraJavaOptions='-Djruby.ir.writing.dyn=true -Djruby.compile.invokedynamic=false' \
+	--conf spark.executor.extraJavaOptions='-Djruby.compile.invokedynamic=false' \
 	--conf "spark.executor.jruby.bootstrap_file=$bootstrap_file" \
 	--jars $jars \
 	--class org.apache.spark.jruby.ScriptMain \

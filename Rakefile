@@ -41,7 +41,7 @@ task :package => JAR_FILE do |t|
   end
 
   cp 'README.md', out
-  cp 'examples', out
+  cp_r 'examples', out
 
   outpkg = out + ".tar.gz"
   puts "Packing #{outpkg}"

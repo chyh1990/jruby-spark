@@ -277,7 +277,6 @@ object JRubySizeEstimator extends Logging {
     if (info != null) {
       return info
     }
-
     val parent = getClassInfo(cls.getSuperclass)
     var shellSize = parent.shellSize
     var pointerFields = parent.pointerFields

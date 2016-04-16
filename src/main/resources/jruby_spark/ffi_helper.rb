@@ -23,7 +23,7 @@ module FFI
             ['native', 'lib', '.'].each do |e|
               begin
                 f = File.join spark_root, e, libname
-                puts f
+                $stderr.puts "FFI: trying #{f}"
                 next unless File.file? f
                 lib = FFI::DynamicLibrary.open(f, lib_flags)
                 break if lib

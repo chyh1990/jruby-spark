@@ -25,7 +25,6 @@ public class ExecutorBootstrap {
     String replHTTP = null;
 
     private ExecutorBootstrap() {
-
         SparkEnv env = SparkEnv.get();
         String bootstrapFile = SPARK_BOOTSTRAP;
         if (env != null) {

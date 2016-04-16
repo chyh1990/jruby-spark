@@ -127,7 +127,7 @@ module JRubySpark
 
     def map_partitions_with_index f = nil, preservesPartitioning = false, &block
       f ||= block if block
-      to_iter_f2 = lambda {|v1, v2| Helpers.to_iter f.call(v1, v2) }
+      to_iter_f2 = lambda {|v1, v2| Helpers.to_iter f.call(v1, v2.lazy.map{|x| Helpers.to_ruby x}) }
       RDD.new @jrdd.mapPartitionsWithIndex(create_func!(JFunction2, to_iter_f2), preservesPartitioning)
     end
 
@@ -139,6 +139,16 @@ module JRubySpark
       }
       RDD.new @jrdd.mapPartitions(create_func!(JFlatMapFunction, proxy_f), preservesPartitioning)
     end
+
+    def map_partitions_to_pair f = nil, preservesPartitioning = false, &block
+      f ||= block if block
+      proxy_f = lambda {|__it|
+        __rb_it = __it.lazy.map{|x| Helpers.to_ruby x}
+        f.call(__rb_it)
+      }
+      PairRDD.new @jrdd.mapPartitionsToPair(create_func!(JPairFlatMapFunction, proxy_f), preservesPartitioning)
+    end
+
 
     def tree_aggregate zero, seqOp, combOp, depth = 2
       @jrdd.treeAggregate zero, create_func!(JFunction2, seqOp), create_func!(JFunction2, combOp), depth
@@ -374,6 +384,8 @@ module JRubySpark
       else
         raise ArgumentError, 'argument should be hash or SparkConf'
       end
+      # always use JavaSerializer
+      conf.set("spark.serializer", 'org.apache.spark.serializer.JavaSerializer')
       ctx = JavaSparkContext.new conf
       @jctx = ctx
     end
