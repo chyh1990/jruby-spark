@@ -86,7 +86,6 @@ public class TypeUtils {
         else if (rubyObject instanceof RubyFloat)
             return ((RubyFloat) rubyObject).getValue();
 
-
         IRubyObject origObject = rubyObject;
         if (rubyObject.dataGetStruct() instanceof JavaObject) {
             rubyObject = (IRubyObject) rubyObject.dataGetStruct();

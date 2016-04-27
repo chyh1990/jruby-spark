@@ -15,6 +15,16 @@ rvm use system
 ```
 to avoid loading installed gems.
 
+Download JRuby 9.1.0.0
+[snapshot](http://ci.jruby.org/snapshots/master/jruby-complete-9.1.0.0-SNAPSHOT.jar)
+to `./libs`, then build the jruby spark:
+
+```
+rake package`
+```
+
+The release package is available in `pkg`.
+
 ## REPL
 
 Run JRuby Spark REPL shell:
